@@ -1,7 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Speech from "expo-speech";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Platform,
@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBle } from "@/context/BleContext";
 import { useLocation } from "@/context/LocationContext";
 import { useColors } from "@/hooks/useColors";
+import { type AIMode, type DeviceAIProfile, initializeSmartAI } from "@/utils/deviceAI";
 
 type CommandResult = {
   id: string;
@@ -87,9 +88,14 @@ export default function VoiceScreen() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [results, setResults] = useState<CommandResult[]>([]);
-  const [mockInput, setMockInput] = useState("");
+  const [aiProfile, setAiProfile] = useState<DeviceAIProfile | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+
   const loopRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  useEffect(() => {
+    initializeSmartAI().then(setAiProfile);
+  }, []);
 
   const webTopPad = Platform.OS === "web" ? 67 : 0;
   const onlinePeers = peers.filter((p) => p.online);
@@ -226,12 +232,42 @@ export default function VoiceScreen() {
           { backgroundColor: colors.card, borderBottomColor: colors.border },
         ]}
       >
-        <Text style={[styles.title, { color: colors.foreground }]}>
-          Voice Command
-        </Text>
-        <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-          AI-powered mesh control
-        </Text>
+        <View>
+          <Text style={[styles.title, { color: colors.foreground }]}>
+            Voice Command
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+            AI-powered mesh control
+          </Text>
+        </View>
+        {aiProfile && (
+          <View
+            style={[
+              styles.aiModeBadge,
+              {
+                backgroundColor:
+                  aiProfile.mode === "TURBO"
+                    ? colors.primary + "22"
+                    : colors.warning + "22",
+              },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name={aiProfile.mode === "TURBO" ? "lightning-bolt" : "speedometer-slow"}
+              size={13}
+              color={aiProfile.mode === "TURBO" ? colors.primary : colors.warning}
+            />
+            <Text
+              style={[
+                styles.aiModeText,
+                { color: aiProfile.mode === "TURBO" ? colors.primary : colors.warning },
+              ]}
+            >
+              {aiProfile.mode === "TURBO" ? "TURBO" : "LITE"}
+              {aiProfile.memoryGB > 0 ? ` · ${aiProfile.memoryGB.toFixed(1)}GB` : ""}
+            </Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.micSection}>
@@ -399,6 +435,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   title: {
     fontSize: 17,
@@ -409,6 +448,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
     fontFamily: "Inter_400Regular",
+  },
+  aiModeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  aiModeText: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.8,
   },
   micSection: {
     alignItems: "center",

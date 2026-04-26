@@ -2,6 +2,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   ScrollView,
@@ -15,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useBle } from "@/context/BleContext";
+import { useCloudSync } from "@/hooks/useCloudSync";
 import { useColors } from "@/hooks/useColors";
 
 type SettingRowProps = {
@@ -89,6 +91,7 @@ export default function SettingsScreen() {
     encryptionEnabled,
     setEncryptionEnabled,
   } = useBle();
+  const sync = useCloudSync();
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(userName);
   const [meshEnabled, setMeshEnabled] = useState(true);
@@ -322,6 +325,96 @@ export default function SettingsScreen() {
       </View>
 
       <Text style={[styles.sectionHeader, { color: colors.mutedForeground }]}>
+        SECURE VAULT SYNC
+      </Text>
+      <View style={[styles.syncCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={styles.syncTop}>
+          <View style={styles.syncStatus}>
+            {sync.status === "syncing" || sync.status === "checking" ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <MaterialCommunityIcons
+                name={
+                  sync.status === "synced" ? "cloud-check" :
+                  sync.status === "no_wifi" ? "wifi-off" :
+                  sync.status === "error" ? "cloud-alert" :
+                  "cloud-upload-outline"
+                }
+                size={22}
+                color={
+                  sync.status === "synced" ? colors.online :
+                  sync.status === "no_wifi" ? colors.warning :
+                  sync.status === "error" ? colors.destructive :
+                  colors.primary
+                }
+              />
+            )}
+            <View>
+              <Text style={[styles.syncStatusLabel, { color: colors.foreground }]}>
+                {sync.status === "syncing" ? "Uploading AES-256 blob..." :
+                 sync.status === "checking" ? "Checking connection..." :
+                 sync.status === "synced" ? "Vault synced" :
+                 sync.status === "no_wifi" ? "No Wi-Fi detected" :
+                 sync.status === "error" ? "Sync failed" :
+                 "Offline log vault"}
+              </Text>
+              <Text style={[styles.syncMeta, { color: colors.mutedForeground }]}>
+                {sync.lastSyncAt
+                  ? `Last sync: ${new Date(sync.lastSyncAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                  : "Never synced · Wi-Fi required"}
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={[
+              styles.syncBtn,
+              { backgroundColor: sync.status === "idle" || sync.status === "synced" ? colors.primary : colors.border },
+            ]}
+            disabled={sync.status === "syncing" || sync.status === "checking"}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              sync.triggerSync(
+                JSON.stringify({
+                  messages: messages.length,
+                  timestamp: Date.now(),
+                  node: userName,
+                })
+              );
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.syncBtnText, { color: colors.primaryForeground }]}>
+              Sync
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {sync.bytesUploaded > 0 && (
+          <View style={[styles.syncStats, { borderTopColor: colors.border }]}>
+            <MaterialCommunityIcons name="shield-lock" size={13} color={colors.online} />
+            <Text style={[styles.syncStatsText, { color: colors.mutedForeground }]}>
+              {(sync.bytesUploaded / 1024).toFixed(1)} KB encrypted · AES-256-CBC
+            </Text>
+          </View>
+        )}
+
+        <View style={[styles.syncAutoRow, { borderTopColor: colors.border }]}>
+          <Text style={[styles.syncAutoLabel, { color: colors.mutedForeground }]}>
+            Auto-sync on Wi-Fi
+          </Text>
+          <Switch
+            value={sync.autoSyncEnabled}
+            onValueChange={(v) => {
+              sync.setAutoSyncEnabled(v);
+              Haptics.selectionAsync();
+            }}
+            trackColor={{ false: colors.border, true: colors.primary + "88" }}
+            thumbColor={sync.autoSyncEnabled ? colors.primary : colors.mutedForeground}
+          />
+        </View>
+      </View>
+
+      <Text style={[styles.sectionHeader, { color: colors.mutedForeground }]}>
         DATA
       </Text>
       <View
@@ -463,4 +556,65 @@ const styles = StyleSheet.create({
   rowInfo: { flex: 1 },
   rowLabel: { fontSize: 14, fontFamily: "Inter_500Medium" },
   rowSub: { fontSize: 12, marginTop: 1, fontFamily: "Inter_400Regular" },
+  syncCard: {
+    marginHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  syncTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 14,
+    gap: 12,
+  },
+  syncStatus: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  syncStatusLabel: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+  },
+  syncMeta: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+  },
+  syncBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  syncBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  syncStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+  },
+  syncStatsText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  syncAutoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+  },
+  syncAutoLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+  },
 });
