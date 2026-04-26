@@ -1,4 +1,4 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 
@@ -8,9 +8,10 @@ type Props = {
   status: "active" | "idle" | "offline";
   peerCount: number;
   isScanning: boolean;
+  encrypted?: boolean;
 };
 
-export function MeshStatusBar({ status, peerCount, isScanning }: Props) {
+export function MeshStatusBar({ status, peerCount, isScanning, encrypted }: Props) {
   const colors = useColors();
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -68,6 +69,12 @@ export function MeshStatusBar({ status, peerCount, isScanning }: Props) {
         </Text>
       </View>
       <View style={styles.right}>
+        {encrypted && (
+          <View style={styles.encBadge}>
+            <Ionicons name="lock-closed" size={11} color={colors.online} />
+            <Text style={[styles.encText, { color: colors.online }]}>E2E</Text>
+          </View>
+        )}
         <MaterialCommunityIcons
           name="access-point-network"
           size={14}
@@ -114,5 +121,20 @@ const styles = StyleSheet.create({
   peerText: {
     fontSize: 12,
     fontFamily: "Inter_500Medium",
+  },
+  encBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+    backgroundColor: "rgba(0,230,118,0.12)",
+    marginRight: 4,
+  },
+  encText: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.8,
   },
 });

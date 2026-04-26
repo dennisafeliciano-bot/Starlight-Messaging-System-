@@ -79,8 +79,16 @@ function SettingRow({
 export default function SettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { peers, messages, nodeStatus, userName, setUserName, clearMessages } =
-    useBle();
+  const {
+    peers,
+    messages,
+    nodeStatus,
+    userName,
+    setUserName,
+    clearMessages,
+    encryptionEnabled,
+    setEncryptionEnabled,
+  } = useBle();
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(userName);
   const [meshEnabled, setMeshEnabled] = useState(true);
@@ -290,6 +298,24 @@ export default function SettingsScreen() {
               }}
               trackColor={{ false: colors.border, true: colors.signal + "88" }}
               thumbColor={voiceEnabled ? colors.signal : colors.mutedForeground}
+            />
+          }
+        />
+        <SettingRow
+          icon={
+            <Ionicons name="lock-closed" size={18} color={colors.online} />
+          }
+          label="AES-256 Encryption"
+          sublabel="End-to-end encrypt all packets"
+          right={
+            <Switch
+              value={encryptionEnabled}
+              onValueChange={(v) => {
+                setEncryptionEnabled(v);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              }}
+              trackColor={{ false: colors.border, true: colors.online + "88" }}
+              thumbColor={encryptionEnabled ? colors.online : colors.mutedForeground}
             />
           }
         />

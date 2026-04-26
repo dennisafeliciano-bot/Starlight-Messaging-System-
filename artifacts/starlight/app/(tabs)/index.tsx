@@ -23,7 +23,7 @@ import { useColors } from "@/hooks/useColors";
 export default function MeshScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { peers, messages, isScanning, nodeStatus, sendMessage } = useBle();
+  const { peers, messages, isScanning, nodeStatus, encryptionEnabled, sendMessage } = useBle();
   const [selectedPeer, setSelectedPeer] = useState<Peer | null>(null);
   const [text, setText] = useState("");
   const [showPeers, setShowPeers] = useState(false);
@@ -61,6 +61,7 @@ export default function MeshScreen() {
           status={nodeStatus}
           peerCount={onlinePeers.length}
           isScanning={isScanning}
+          encrypted={encryptionEnabled}
         />
 
         <TouchableOpacity

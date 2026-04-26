@@ -8,6 +8,8 @@ import React, {
   useState,
 } from "react";
 
+import { decryptStarPacket, encryptStarPacket } from "@/utils/crypto";
+
 export type Peer = {
   id: string;
   name: string;
@@ -26,6 +28,7 @@ export type Message = {
   type: "TEXT" | "GPS_PING" | "VOICE";
   timestamp: number;
   outgoing: boolean;
+  encrypted: boolean;
 };
 
 type BleContextType = {
@@ -33,6 +36,8 @@ type BleContextType = {
   messages: Message[];
   isScanning: boolean;
   nodeStatus: "active" | "idle" | "offline";
+  encryptionEnabled: boolean;
+  setEncryptionEnabled: (v: boolean) => void;
   sendMessage: (peerId: string, content: string, type?: Message["type"]) => void;
   broadcastLocation: (lat: number, lon: number) => void;
   userName: string;
@@ -61,10 +66,9 @@ const MOCK_MESSAGES = [
 ];
 
 function makePeer(index: number): Peer {
-  const baseNames = MOCK_NAMES;
   return {
     id: `node-${index}`,
-    name: baseNames[index % baseNames.length],
+    name: MOCK_NAMES[index % MOCK_NAMES.length],
     rssi: -(40 + Math.floor(Math.random() * 50)),
     lastSeen: Date.now() - Math.floor(Math.random() * 30000),
     lat: 40.7128 + (Math.random() - 0.5) * 0.01,
@@ -75,15 +79,15 @@ function makePeer(index: number): Peer {
 
 const STORAGE_KEY = "@starlight_messages";
 const USERNAME_KEY = "@starlight_username";
+const ENCRYPTION_KEY = "@starlight_encryption";
 
 export function BleProvider({ children }: { children: React.ReactNode }) {
   const [peers, setPeers] = useState<Peer[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isScanning, setIsScanning] = useState(false);
-  const [nodeStatus, setNodeStatus] = useState<"active" | "idle" | "offline">(
-    "idle"
-  );
+  const [nodeStatus, setNodeStatus] = useState<"active" | "idle" | "offline">("idle");
   const [userName, setUserNameState] = useState("Dennis_Feliciano");
+  const [encryptionEnabled, setEncryptionEnabledState] = useState(true);
   const scanIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -92,8 +96,10 @@ export function BleProvider({ children }: { children: React.ReactNode }) {
       try {
         const storedMessages = await AsyncStorage.getItem(STORAGE_KEY);
         const storedName = await AsyncStorage.getItem(USERNAME_KEY);
+        const storedEnc = await AsyncStorage.getItem(ENCRYPTION_KEY);
         if (storedMessages) setMessages(JSON.parse(storedMessages));
         if (storedName) setUserNameState(storedName);
+        if (storedEnc !== null) setEncryptionEnabledState(storedEnc === "true");
       } catch {}
     };
     load();
@@ -109,6 +115,18 @@ export function BleProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(msgs.slice(-200)));
     } catch {}
   }, []);
+
+  const setEncryptionEnabled = useCallback(async (v: boolean) => {
+    setEncryptionEnabledState(v);
+    try {
+      await AsyncStorage.setItem(ENCRYPTION_KEY, String(v));
+    } catch {}
+  }, []);
+
+  const encryptionEnabledRef = useRef(encryptionEnabled);
+  useEffect(() => {
+    encryptionEnabledRef.current = encryptionEnabled;
+  }, [encryptionEnabled]);
 
   const startMesh = useCallback(() => {
     setIsScanning(true);
@@ -128,7 +146,6 @@ export function BleProvider({ children }: { children: React.ReactNode }) {
           lastSeen: p.online ? Date.now() : p.lastSeen,
           online: Math.random() > 0.15,
         }));
-
         if (Math.random() > 0.7 && updated.length < 6) {
           updated.push(makePeer(updated.length));
         }
@@ -136,36 +153,63 @@ export function BleProvider({ children }: { children: React.ReactNode }) {
       });
     }, 4000);
 
-    pingIntervalRef.current = setInterval(() => {
+    pingIntervalRef.current = setInterval(async () => {
       setPeers((currentPeers) => {
         if (currentPeers.length === 0) return currentPeers;
         const onlinePeers = currentPeers.filter((p) => p.online);
         if (onlinePeers.length === 0) return currentPeers;
+
         const peer = onlinePeers[Math.floor(Math.random() * onlinePeers.length)];
-        const content =
-          MOCK_MESSAGES[Math.floor(Math.random() * MOCK_MESSAGES.length)];
-        const msg: Message = {
-          id: `${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-          peerId: peer.id,
-          peerName: peer.name,
-          content,
-          type: "TEXT",
-          timestamp: Date.now(),
-          outgoing: false,
+        const rawContent = MOCK_MESSAGES[Math.floor(Math.random() * MOCK_MESSAGES.length)];
+        const useEncryption = encryptionEnabledRef.current;
+
+        const addMessage = async () => {
+          let content = rawContent;
+          if (useEncryption) {
+            try {
+              const encrypted = await encryptStarPacket(rawContent);
+              const decrypted = await decryptStarPacket(encrypted);
+              content = decrypted ?? rawContent;
+            } catch {}
+          }
+
+          const msg: Message = {
+            id: `${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+            peerId: peer.id,
+            peerName: peer.name,
+            content,
+            type: "TEXT",
+            timestamp: Date.now(),
+            outgoing: false,
+            encrypted: useEncryption,
+          };
+
+          setMessages((prev) => {
+            const next = [...prev, msg];
+            saveMessages(next);
+            return next;
+          });
         };
-        setMessages((prev) => {
-          const next = [...prev, msg];
-          saveMessages(next);
-          return next;
-        });
+
+        addMessage();
         return currentPeers;
       });
     }, 8000);
   }, [saveMessages]);
 
   const sendMessage = useCallback(
-    (peerId: string, content: string, type: Message["type"] = "TEXT") => {
+    async (peerId: string, content: string, type: Message["type"] = "TEXT") => {
       const peer = peers.find((p) => p.id === peerId);
+      const useEncryption = encryptionEnabled;
+
+      if (useEncryption) {
+        try {
+          await encryptStarPacket(
+            JSON.stringify({ type, content, timestamp: Date.now() })
+          );
+        } catch {}
+      }
+
       const msg: Message = {
         id: `${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
         peerId,
@@ -174,14 +218,16 @@ export function BleProvider({ children }: { children: React.ReactNode }) {
         type,
         timestamp: Date.now(),
         outgoing: true,
+        encrypted: useEncryption,
       };
+
       setMessages((prev) => {
         const next = [...prev, msg];
         saveMessages(next);
         return next;
       });
     },
-    [peers, saveMessages]
+    [peers, encryptionEnabled, saveMessages]
   );
 
   const broadcastLocation = useCallback(
@@ -218,6 +264,8 @@ export function BleProvider({ children }: { children: React.ReactNode }) {
         messages,
         isScanning,
         nodeStatus,
+        encryptionEnabled,
+        setEncryptionEnabled,
         sendMessage,
         broadcastLocation,
         userName,
