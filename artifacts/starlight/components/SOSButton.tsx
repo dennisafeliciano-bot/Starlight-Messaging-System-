@@ -15,6 +15,12 @@ import { useBle } from "@/context/BleContext";
 import { useColors } from "@/hooks/useColors";
 import { buildSOSPacket, formatSOSMessage } from "@/utils/sos";
 import { startEmergencySiren, stopEmergencySiren } from "@/utils/siren";
+import { encryptStarPacket } from "@/utils/crypto";
+
+// ─── SAFE TEST FLAG ────────────────────────────────────────────────────────────
+// Set to `false` for real-world deployment. While true, SOS fires full visuals,
+// siren, and a priority mesh packet — but no actual emergency broadcast.
+const IS_TEST_MODE = true;
 
 type SOSPhase = "idle" | "arming" | "sending" | "sent" | "error";
 
@@ -24,7 +30,7 @@ const SOS_GREEN = "#00E676";
 
 export function SOSButton({ nodeId }: { nodeId: string }) {
   const colors = useColors();
-  const { broadcastSOS, peers } = useBle();
+  const { broadcastSOS, peers, sendMessage } = useBle();
 
   const [phase, setPhase] = useState<SOSPhase>("idle");
   const [sentCount, setSentCount] = useState(0);
@@ -121,34 +127,89 @@ export function SOSButton({ nodeId }: { nodeId: string }) {
   const fire = useCallback(async () => {
     setPhase("sending");
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    console.log("[StarLight] SOS Button Pressed...");
 
     try {
-      const packet = await buildSOSPacket(nodeId);
-      const payload = formatSOSMessage(packet);
-      const count = await broadcastSOS(payload);
+      if (IS_TEST_MODE) {
+        // ── TEST MODE ─────────────────────────────────────────────────────────
+        // Full visual + audio + mesh test — zero real emergency traffic.
+        console.log("[StarLight] DEBUG: SOS Test Mode Active. No real authorities notified.");
 
-      setSentCount(count);
-      setPhase("sent");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        // 1. Grab GPS + battery for the test packet display
+        const packet = await buildSOSPacket(nodeId);
 
-      startEmergencySiren().catch((e) => console.warn("[StarLight] Siren error:", e));
+        // 2. Visual — rings + green phase already triggered by setPhase("sent") below
+        setSentCount(0);
+        setPhase("sent");
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-      const dest = count > 0 ? `${count} node${count !== 1 ? "s" : ""}` : "broadcast channel";
-      Alert.alert(
-        "🆘 SOS Beamed",
-        `Emergency signal + GPS sent to ${dest} via AES-256 encrypted mesh.\n\n` +
-          `📍 ${packet.lat.toFixed(6)}, ${packet.lng.toFixed(6)}\n` +
-          `🔋 Battery: ${packet.battery >= 0 ? `${packet.battery}%` : "N/A"} (${packet.batteryState})\n\n` +
-          `🔊 Emergency siren active — plays through silent mode`,
-        [
-          {
-            text: "Cancel SOS",
-            style: "destructive",
-            onPress: cancelSOS,
-          },
-          { text: "Keep Active", style: "default" },
-        ]
-      );
+        // 3. Audio — full StarLight siren (plays through silent mode)
+        startEmergencySiren().catch((e) =>
+          console.warn("[StarLight] Siren error:", e)
+        );
+
+        // 4. Mesh — encrypt a no-action test string and beam it to the first
+        //    online peer (priority packet); falls back to local log if no peers.
+        const encrypted = await encryptStarPacket(
+          "TEST_SOS_SIGNAL_NO_ACTION_REQUIRED"
+        );
+        const target = peers.find((p) => p.online);
+        if (target) {
+          sendMessage(target.id, encrypted, "SOS");
+          console.log(
+            `[StarLight] Test priority packet beamed to: ${target.name} (${target.id})`
+          );
+        } else {
+          console.log("[StarLight] No online peers — test packet logged locally.");
+        }
+
+        Alert.alert(
+          "✅ Test Successful",
+          `Siren active · AES-256 test packet sent${target ? ` to ${target.name}` : " (no peers online)"}.\n\n` +
+            `📍 ${packet.lat.toFixed(6)}, ${packet.lng.toFixed(6)}\n` +
+            `🔋 Battery: ${packet.battery >= 0 ? `${packet.battery}%` : "N/A"} (${packet.batteryState})\n\n` +
+            `⚠️ TEST MODE — No real alarm triggered.`,
+          [
+            {
+              text: "Stop Siren",
+              style: "destructive",
+              onPress: cancelSOS,
+            },
+            { text: "OK", style: "default" },
+          ]
+        );
+      } else {
+        // ── REAL WORLD MODE ───────────────────────────────────────────────────
+        const packet = await buildSOSPacket(nodeId);
+        const payload = formatSOSMessage(packet);
+        const count = await broadcastSOS(payload);
+
+        setSentCount(count);
+        setPhase("sent");
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+        startEmergencySiren().catch((e) =>
+          console.warn("[StarLight] Siren error:", e)
+        );
+
+        const dest =
+          count > 0 ? `${count} node${count !== 1 ? "s" : ""}` : "broadcast channel";
+        Alert.alert(
+          "🆘 SOS Beamed",
+          `Emergency signal + GPS sent to ${dest} via AES-256 encrypted mesh.\n\n` +
+            `📍 ${packet.lat.toFixed(6)}, ${packet.lng.toFixed(6)}\n` +
+            `🔋 Battery: ${packet.battery >= 0 ? `${packet.battery}%` : "N/A"} (${packet.batteryState})\n\n` +
+            `🔊 Emergency siren active — plays through silent mode`,
+          [
+            {
+              text: "Cancel SOS",
+              style: "destructive",
+              onPress: cancelSOS,
+            },
+            { text: "Keep Active", style: "default" },
+          ]
+        );
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Unknown error";
       setPhase("error");
@@ -159,7 +220,7 @@ export function SOSButton({ nodeId }: { nodeId: string }) {
         [{ text: "OK", onPress: () => setPhase("idle") }]
       );
     }
-  }, [nodeId, broadcastSOS, stopRings, cancelSOS]);
+  }, [nodeId, broadcastSOS, sendMessage, peers, stopRings, cancelSOS]);
 
   const btnBg =
     phase === "sent" ? SOS_GREEN : phase === "error" ? colors.warning : SOS_RED;
