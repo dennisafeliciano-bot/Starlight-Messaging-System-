@@ -3,7 +3,7 @@ import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 
@@ -19,6 +19,10 @@ function NativeTabLayout() {
       <NativeTabs.Trigger name="map">
         <Icon sf={{ default: "map", selected: "map.fill" }} />
         <Label>Radar</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="chat">
+        <Icon sf={{ default: "bubble.left.and.bubble.right", selected: "bubble.left.and.bubble.right.fill" }} />
+        <Label>Chat</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="voice">
         <Icon sf={{ default: "mic", selected: "mic.fill" }} />
@@ -104,6 +108,19 @@ function ClassicTabLayout() {
               <SymbolView name="map" tintColor={color} size={22} />
             ) : (
               <Feather name="map" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="chat"
+        options={{
+          title: "Chat",
+          headerTitle: "StarLight Chat",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="bubble.left.and.bubble.right" tintColor={color} size={22} />
+            ) : (
+              <Ionicons name="chatbubbles-outline" size={22} color={color} />
             ),
         }}
       />
