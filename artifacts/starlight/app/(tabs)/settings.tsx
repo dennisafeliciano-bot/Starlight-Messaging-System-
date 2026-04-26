@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { StarLightNavOverlay } from "@/components/StarLightNavOverlay";
 import { useBle } from "@/context/BleContext";
 import { useCloudSync } from "@/hooks/useCloudSync";
 import { useColors } from "@/hooks/useColors";
@@ -140,8 +141,9 @@ export default function SettingsScreen() {
       : colors.destructive;
 
   return (
+    <View style={[styles.rootWrap, { backgroundColor: colors.background }]}>
     <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={styles.container}
       contentContainerStyle={{
         paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 20,
         paddingTop: webTopPad,
@@ -461,10 +463,15 @@ export default function SettingsScreen() {
         />
       </View>
     </ScrollView>
+
+      {/* Nav overlay — back arrow + right quick-nav rail */}
+      <StarLightNavOverlay />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  rootWrap: { flex: 1 },
   container: { flex: 1 },
   profileCard: {
     flexDirection: "row",

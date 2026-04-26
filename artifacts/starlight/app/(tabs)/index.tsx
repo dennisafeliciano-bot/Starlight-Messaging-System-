@@ -22,6 +22,7 @@ import { MessageBubble } from "@/components/MessageBubble";
 import { MeshStatusBar } from "@/components/MeshStatusBar";
 import { PeerCard } from "@/components/PeerCard";
 import { SOSButton } from "@/components/SOSButton";
+import { StarLightNavOverlay } from "@/components/StarLightNavOverlay";
 import { type Message, type Peer, useBle } from "@/context/BleContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -439,6 +440,9 @@ export default function MeshScreen() {
           <ToolbarRow />
         </InputAccessoryView>
       )}
+
+      {/* Nav overlay — back arrow + right quick-nav rail */}
+      <StarLightNavOverlay />
     </KeyboardAvoidingView>
   );
 }

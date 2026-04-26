@@ -1,0 +1,68 @@
+import React from 'react';
+import { View, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+
+export const StarLightNavOverlay = ({ navigation }) => {
+  return (
+    <>
+      {/* 1. QUICK-BACK ARROW (Top Left of Input Area) */}
+      <View style={styles.backArrowContainer}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Ionicons name="chevron-back-circle" size={32} color="#00D4FF" />
+        </TouchableOpacity>
+      </View>
+
+      {/* 2. NAVIGATION SLIDE BAR (Right Hand Side) */}
+      <View style={styles.rightSlideBar}>
+        <TouchableOpacity style={styles.sideIcon} onPress={() => navigation.navigate('Radar')}>
+          <Ionicons name="radar-outline" size={24} color="#00D4FF" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.sideIcon} onPress={() => navigation.navigate('Mesh')}>
+          <Ionicons name="share-social-outline" size={24} color="#00D4FF" />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.sideIcon} onPress={() => navigation.navigate('Settings')}>
+          <Ionicons name="options-outline" size={24} color="#00D4FF" />
+        </TouchableOpacity>
+
+        {/* Tactical Vertical Divider */}
+        <View style={styles.verticalLine} />
+      </View>
+    </>
+  );
+};
+
+const styles = StyleSheet.create({
+  backArrowContainer: {
+    position: 'absolute',
+    top: -40, // Sits perfectly above the typing input
+    left: 10,
+    zIndex: 1000,
+  },
+  rightSlideBar: {
+    position: 'absolute',
+    right: 0,
+    top: '30%',
+    height: '40%',
+    width: 45,
+    backgroundColor: 'rgba(26, 26, 26, 0.8)', // Semi-transparent stealth
+    borderTopLeftRadius: 20,
+    borderBottomLeftRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 212, 255, 0.3)',
+    zIndex: 1000,
+  },
+  sideIcon: {
+    marginVertical: 15,
+  },
+  verticalLine: {
+    height: 40,
+    width: 2,
+    backgroundColor: '#00D4FF',
+    marginTop: 10,
+    borderRadius: 1,
+  }
+});

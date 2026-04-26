@@ -21,6 +21,7 @@ import {
   StarLightContactPicker,
   type StarContact,
 } from "@/components/StarLightContactPicker";
+import { StarLightNavOverlay } from "@/components/StarLightNavOverlay";
 import { type Message, type Peer, useBle } from "@/context/BleContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -575,6 +576,9 @@ export default function ChatScreen() {
         onSelect={handleContactImport}
         alreadyAdded={savedContacts.map((c) => c.id)}
       />
+
+      {/* Nav overlay — back arrow + right quick-nav rail */}
+      <StarLightNavOverlay bottomOffset={composerReserved + composerBottom} />
     </View>
   );
 }

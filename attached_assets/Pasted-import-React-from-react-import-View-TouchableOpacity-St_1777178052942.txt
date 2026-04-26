@@ -1,0 +1,79 @@
+import React from 'react';
+import { View, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+
+const { height } = Dimensions.get('window');
+
+export const StarLightTacticalNav = ({ navigation }) => {
+  return (
+    <>
+      {/* 1. THE NAVIGATION TOOLBAR (Sits right above the typing input) */}
+      <View style={styles.inputHeaderNav}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.navButton}>
+          <Ionicons name="arrow-back-circle" size={30} color="#00D4FF" />
+        </TouchableOpacity>
+        
+        {/* Forward button for swapping between recent screens */}
+        <TouchableOpacity onPress={() => console.log("Swap Forward")} style={styles.navButton}>
+          <Ionicons name="arrow-forward-circle" size={30} color="#00D4FF" />
+        </TouchableOpacity>
+      </View>
+
+      {/* 2. THE RIGHT-SIDE SLIDE BAR (Vertical Shortcut) */}
+      <View style={styles.slideBarContainer}>
+        <TouchableOpacity style={styles.slideIcon} onPress={() => navigation.navigate('Radar')}>
+          <Ionicons name="scan-outline" size={22} color="#00D4FF" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.slideIcon} onPress={() => navigation.navigate('Mesh')}>
+          <Ionicons name="cellular-outline" size={22} color="#00D4FF" />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.slideIcon} onPress={() => navigation.navigate('SOS')}>
+          <Ionicons name="alert-circle-outline" size={22} color="#FF3B30" /> 
+        </TouchableOpacity>
+        
+        {/* Visual 'Grip' for sliding */}
+        <View style={styles.slideGrip} />
+      </View>
+    </>
+  );
+};
+
+const styles = StyleSheet.create({
+  inputHeaderNav: {
+    flexDirection: 'row',
+    position: 'absolute',
+    top: -45, // Positions it right on top of the keyboard input
+    left: 10,
+    zIndex: 2000,
+  },
+  navButton: {
+    marginRight: 15,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 15,
+  },
+  slideBarContainer: {
+    position: 'absolute',
+    right: 5,
+    top: height * 0.3, // Centers it vertically
+    width: 40,
+    backgroundColor: 'rgba(20, 20, 20, 0.9)',
+    borderRadius: 20,
+    paddingVertical: 15,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#00D4FF',
+    zIndex: 2000,
+  },
+  slideIcon: {
+    marginVertical: 12,
+  },
+  slideGrip: {
+    width: 4,
+    height: 30,
+    backgroundColor: '#333',
+    borderRadius: 2,
+    marginTop: 5,
+  }
+});

@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { StarLightNavOverlay } from "@/components/StarLightNavOverlay";
 import { type Peer, useBle } from "@/context/BleContext";
 import { useLocation } from "@/context/LocationContext";
 import { usePrecisionFinder } from "@/hooks/usePrecisionFinder";
@@ -343,6 +344,9 @@ export default function MapScreen() {
 
         <View style={{ height: insets.bottom + (Platform.OS === "web" ? 34 : 0) + 20 }} />
       </ScrollView>
+
+      {/* Nav overlay — back arrow + right quick-nav rail */}
+      <StarLightNavOverlay />
     </View>
   );
 }

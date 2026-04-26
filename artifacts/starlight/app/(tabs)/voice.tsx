@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { StarLightNavOverlay } from "@/components/StarLightNavOverlay";
 import { useBle } from "@/context/BleContext";
 import { useLocation } from "@/context/LocationContext";
 import { useColors } from "@/hooks/useColors";
@@ -425,6 +426,9 @@ export default function VoiceScreen() {
           ))
         )}
       </ScrollView>
+
+      {/* Nav overlay — back arrow + right quick-nav rail */}
+      <StarLightNavOverlay />
     </View>
   );
 }
