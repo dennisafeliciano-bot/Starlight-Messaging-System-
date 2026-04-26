@@ -1,0 +1,111 @@
+import React, { useState } from 'react';
+import { 
+  View, TextInput, TouchableOpacity, KeyboardAvoidingView, 
+  Platform, InputAccessoryView, StyleSheet 
+} from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+
+const StarLightChatInput = () => {
+  const [text, setText] = useState('');
+  const inputID = 'starlight-input'; // Unique ID for the sticky toolbar
+
+  return (
+    <View style={styles.container}>
+      {/* 1. THE STICKY TOOLBAR (Highlighted on top of keyboard) */}
+      <InputAccessoryView nativeID={inputID}>
+        <View style={styles.toolbar}>
+          
+          {/* AI ASSISTANT ICON */}
+          <TouchableOpacity onPress={() => console.log("AI Optimized")}>
+            <MaterialCommunityIcons name="robot-vacuum-variant" size={26} color="#00D4FF" />
+          </TouchableOpacity>
+
+          {/* CAMERA / SCANNER */}
+          <TouchableOpacity onPress={() => console.log("Camera Active")}>
+            <Ionicons name="camera-outline" size={26} color="#00D4FF" />
+          </TouchableOpacity>
+
+          {/* ATTACHMENTS (DOCS/FILES) */}
+          <TouchableOpacity onPress={() => console.log("File Picker")}>
+            <Ionicons name="attach-outline" size={28} color="#00D4FF" />
+          </TouchableOpacity>
+
+          {/* EMOJI SELECTOR */}
+          <TouchableOpacity onPress={() => console.log("Emoji Menu")}>
+            <Ionicons name="happy-outline" size={26} color="#00D4FF" />
+          </TouchableOpacity>
+
+          {/* REPLY BUTTON */}
+          <TouchableOpacity onPress={() => console.log("Replying...")}>
+            <MaterialCommunityIcons name="reply-outline" size={26} color="#00D4FF" />
+          </TouchableOpacity>
+
+        </View>
+      </InputAccessoryView>
+
+      {/* 2. THE MAIN INPUT FIELD */}
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.inputWrapper}
+      >
+        <View style={styles.inputRow}>
+          <TextInput
+            style={styles.textInput}
+            inputAccessoryViewID={inputID} // Connects the toolbar above
+            placeholder="Type encrypted message..."
+            placeholderTextColor="#666"
+            value={text}
+            onChangeText={setText}
+            multiline
+          />
+          
+          {/* SEND BUTTON */}
+          <TouchableOpacity style={styles.sendBtn} onPress={() => console.log("Beamed!")}>
+            <Ionicons name="send" size={22} color="#FFF" />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#000' },
+  toolbar: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: '#111',
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderColor: '#333',
+  },
+  inputWrapper: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    padding: 10,
+    backgroundColor: '#000',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1A1A1A',
+    borderRadius: 30,
+    paddingHorizontal: 15,
+    borderWidth: 1,
+    borderColor: '#00D4FF',
+  },
+  textInput: {
+    flex: 1,
+    color: '#FFF',
+    fontSize: 16,
+    paddingVertical: 10,
+  },
+  sendBtn: {
+    backgroundColor: '#00D4FF',
+    borderRadius: 20,
+    padding: 8,
+    marginLeft: 10,
+  }
+});
