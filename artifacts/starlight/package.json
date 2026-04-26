@@ -56,6 +56,7 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
+    "expo-contacts": "^55.0.13",
     "expo-device": "^55.0.15",
     "expo-network": "^55.0.13",
     "expo-speech": "^14.0.8"

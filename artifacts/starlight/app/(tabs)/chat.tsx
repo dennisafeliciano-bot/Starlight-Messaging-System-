@@ -17,6 +17,10 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import {
+  StarLightContactPicker,
+  type StarContact,
+} from "@/components/StarLightContactPicker";
 import { type Message, type Peer, useBle } from "@/context/BleContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -130,6 +134,9 @@ export default function ChatScreen() {
   const { peers, messages, encryptionEnabled, sendMessage } = useBle();
 
   const [selectedPeer, setSelectedPeer] = useState<Peer | null>(null);
+  const [savedContacts, setSavedContacts] = useState<StarContact[]>([]);
+  const [selectedContact, setSelectedContact] = useState<StarContact | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
@@ -177,8 +184,18 @@ export default function ChatScreen() {
     setTimeout(() => setSending(false), 400);
   }, [text, selectedPeer, replyTo, sendMessage, sendScale]);
 
+  const handleContactImport = useCallback((contact: StarContact) => {
+    setSavedContacts((prev) => {
+      if (prev.find((c) => c.id === contact.id)) return prev;
+      return [...prev, contact];
+    });
+    setSelectedContact(contact);
+    setSelectedPeer(null);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, []);
+
   const requirePeer = (cb: () => void) => {
-    if (!selectedPeer) {
+    if (!selectedPeer && !selectedContact) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       Alert.alert("Select a contact first", "Tap a node at the top to open a thread.");
       return;
@@ -265,44 +282,86 @@ export default function ChatScreen() {
           style={[styles.contactBar, { backgroundColor: colors.card, borderBottomColor: colors.border }]}
           contentContainerStyle={styles.contactBarContent}
         >
-          {peers.length === 0 ? (
-            <Text style={[styles.noNodes, { color: colors.mutedForeground }]}>No nodes in range</Text>
-          ) : (
-            peers.map((p) => {
-              const isActive = selectedPeer?.id === p.id;
-              const unread = messages.filter(m => m.peerId === p.id && !m.outgoing).length;
-              return (
-                <TouchableOpacity
-                  key={p.id}
-                  style={styles.contactPill}
-                  onPress={() => setSelectedPeer(isActive ? null : p)}
-                  activeOpacity={0.8}
-                >
-                  <View style={[styles.contactAvatar, {
-                    backgroundColor: isActive ? colors.primary : colors.secondary,
-                    borderColor: p.online ? colors.online : colors.border,
-                    borderWidth: 2,
-                  }]}>
-                    <Text style={[styles.contactInitial, { color: isActive ? colors.primaryForeground : colors.foreground }]}>
-                      {p.name.charAt(0).toUpperCase()}
-                    </Text>
-                    {unread > 0 && (
-                      <View style={[styles.badge, { backgroundColor: colors.destructive }]}>
-                        <Text style={styles.badgeText}>{unread > 9 ? "9+" : unread}</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={[styles.contactName, { color: isActive ? colors.primary : colors.mutedForeground }]} numberOfLines={1}>
-                    {p.name.split(" ")[0]}
+          {/* Import "+" button — always first */}
+          <TouchableOpacity
+            style={styles.contactPill}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setShowPicker(true); }}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.contactAvatar, { backgroundColor: colors.secondary, borderColor: colors.primary, borderWidth: 2 }]}>
+              <Ionicons name="person-add-outline" size={20} color={colors.primary} />
+            </View>
+            <Text style={[styles.contactName, { color: colors.primary }]}>Import</Text>
+            <View style={[styles.onlineDot, { backgroundColor: "transparent" }]} />
+          </TouchableOpacity>
+
+          {/* BLE mesh peers */}
+          {peers.map((p) => {
+            const isActive = selectedPeer?.id === p.id;
+            const unread = messages.filter(m => m.peerId === p.id && !m.outgoing).length;
+            return (
+              <TouchableOpacity
+                key={p.id}
+                style={styles.contactPill}
+                onPress={() => { setSelectedPeer(isActive ? null : p); setSelectedContact(null); }}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.contactAvatar, {
+                  backgroundColor: isActive ? colors.primary : colors.secondary,
+                  borderColor: p.online ? colors.online : colors.border,
+                  borderWidth: 2,
+                }]}>
+                  <Text style={[styles.contactInitial, { color: isActive ? colors.primaryForeground : colors.foreground }]}>
+                    {p.name.charAt(0).toUpperCase()}
                   </Text>
-                  <View style={[styles.onlineDot, { backgroundColor: p.online ? colors.online : colors.mutedForeground }]} />
-                </TouchableOpacity>
-              );
-            })
+                  {unread > 0 && (
+                    <View style={[styles.badge, { backgroundColor: colors.destructive }]}>
+                      <Text style={styles.badgeText}>{unread > 9 ? "9+" : unread}</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={[styles.contactName, { color: isActive ? colors.primary : colors.mutedForeground }]} numberOfLines={1}>
+                  {p.name.split(" ")[0]}
+                </Text>
+                <View style={[styles.onlineDot, { backgroundColor: p.online ? colors.online : colors.mutedForeground }]} />
+              </TouchableOpacity>
+            );
+          })}
+
+          {/* Saved device contacts */}
+          {savedContacts.map((c) => {
+            const isActive = selectedContact?.id === c.id;
+            return (
+              <TouchableOpacity
+                key={c.id}
+                style={styles.contactPill}
+                onPress={() => { setSelectedContact(isActive ? null : c); setSelectedPeer(null); }}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.contactAvatar, {
+                  backgroundColor: isActive ? colors.accent : colors.secondary,
+                  borderColor: isActive ? colors.accent : colors.border,
+                  borderWidth: 2,
+                  borderStyle: "dashed",
+                }]}>
+                  <Text style={[styles.contactInitial, { color: isActive ? "#000" : colors.foreground }]}>
+                    {c.initials}
+                  </Text>
+                </View>
+                <Text style={[styles.contactName, { color: isActive ? colors.accent : colors.mutedForeground }]} numberOfLines={1}>
+                  {c.name.split(" ")[0]}
+                </Text>
+                <View style={[styles.onlineDot, { backgroundColor: colors.border }]} />
+              </TouchableOpacity>
+            );
+          })}
+
+          {peers.length === 0 && savedContacts.length === 0 && (
+            <Text style={[styles.noNodes, { color: colors.mutedForeground }]}>No nodes — import contacts or wait for mesh</Text>
           )}
         </ScrollView>
 
-        {/* Thread header */}
+        {/* Thread header — BLE peer */}
         {selectedPeer && (
           <View style={[styles.threadHeader, { backgroundColor: colors.secondary, borderBottomColor: colors.border }]}>
             <View style={styles.threadHeaderLeft}>
@@ -325,17 +384,55 @@ export default function ChatScreen() {
             </View>
           </View>
         )}
+
+        {/* Thread header — device contact (off-mesh) */}
+        {selectedContact && !selectedPeer && (
+          <View style={[styles.threadHeader, { backgroundColor: colors.secondary, borderBottomColor: colors.border }]}>
+            <View style={styles.threadHeaderLeft}>
+              <MaterialCommunityIcons name="account-circle-outline" size={18} color={colors.accent} />
+              <Text style={[styles.threadName, { color: colors.foreground }]}>{selectedContact.name}</Text>
+              <View style={[styles.offMeshPill, { backgroundColor: colors.warning + "22" }]}>
+                <MaterialCommunityIcons name="bluetooth-off" size={10} color={colors.warning} />
+                <Text style={[styles.offMeshText, { color: colors.warning }]}>Off-mesh</Text>
+              </View>
+            </View>
+            <View style={styles.threadHeaderRight}>
+              {selectedContact.phone && (
+                <Text style={[styles.rssi, { color: colors.mutedForeground }]}>{selectedContact.phone}</Text>
+              )}
+              <TouchableOpacity onPress={() => setSelectedContact(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="close-circle-outline" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </View>
 
       {/* ── Message history ─────────────────────────────── */}
       <View style={[styles.historyArea, { paddingBottom: composerReserved + composerBottom }]}>
-        {!selectedPeer ? (
+        {!selectedPeer && !selectedContact ? (
           <View style={styles.noThread}>
             <MaterialCommunityIcons name="chat-outline" size={56} color={colors.border} />
             <Text style={[styles.noThreadTitle, { color: colors.mutedForeground }]}>No conversation open</Text>
             <Text style={[styles.noThreadHint, { color: colors.mutedForeground }]}>
-              Tap a node above to start a secure thread
+              Tap a node above or import a contact to start a secure thread
             </Text>
+          </View>
+        ) : selectedContact && !selectedPeer ? (
+          <View style={styles.noThread}>
+            <MaterialCommunityIcons name="bluetooth-settings" size={52} color={colors.border} />
+            <Text style={[styles.noThreadTitle, { color: colors.foreground }]}>
+              {selectedContact.name}
+            </Text>
+            <Text style={[styles.noThreadHint, { color: colors.mutedForeground }]}>
+              {selectedContact.phone ?? selectedContact.email ?? ""}
+            </Text>
+            <View style={[styles.offMeshBanner, { backgroundColor: colors.warning + "18", borderColor: colors.warning + "44" }]}>
+              <MaterialCommunityIcons name="bluetooth-off" size={14} color={colors.warning} />
+              <Text style={[styles.offMeshBannerText, { color: colors.warning }]}>
+                Not on the mesh yet — messages will send when they join
+              </Text>
+            </View>
           </View>
         ) : (
           <FlatList
@@ -443,14 +540,14 @@ export default function ChatScreen() {
             <Animated.View style={{ transform: [{ scale: sendScale }] }}>
               <TouchableOpacity
                 onPress={handleSend}
-                disabled={!text.trim() || !selectedPeer || sending}
+                disabled={!text.trim() || (!selectedPeer && !selectedContact) || sending}
                 activeOpacity={0.8}
-                style={[styles.sendCircle, { backgroundColor: text.trim() && selectedPeer ? colors.primary : "transparent" }]}
+                style={[styles.sendCircle, { backgroundColor: text.trim() && (selectedPeer || selectedContact) ? colors.primary : "transparent" }]}
               >
                 <Ionicons
                   name="send"
                   size={18}
-                  color={text.trim() && selectedPeer ? colors.primaryForeground : colors.mutedForeground}
+                  color={text.trim() && (selectedPeer || selectedContact) ? colors.primaryForeground : colors.mutedForeground}
                 />
               </TouchableOpacity>
             </Animated.View>
@@ -470,6 +567,14 @@ export default function ChatScreen() {
           <ToolbarRow />
         </InputAccessoryView>
       )}
+
+      {/* Shadow List / Contact picker modal */}
+      <StarLightContactPicker
+        visible={showPicker}
+        onClose={() => setShowPicker(false)}
+        onSelect={handleContactImport}
+        alreadyAdded={savedContacts.map((c) => c.id)}
+      />
     </View>
   );
 }
@@ -489,7 +594,11 @@ const styles = StyleSheet.create({
   onlineDot: { width: 6, height: 6, borderRadius: 3 },
 
   threadHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1 },
-  threadHeaderLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  threadHeaderLeft: { flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1 },
+  offMeshPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8 },
+  offMeshText: { fontSize: 10, fontFamily: "Inter_600SemiBold" },
+  offMeshBanner: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1, maxWidth: 300 },
+  offMeshBannerText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
   threadHeaderRight: { flexDirection: "row", alignItems: "center", gap: 10 },
   threadDot: { width: 8, height: 8, borderRadius: 4 },
   threadName: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
