@@ -14,6 +14,7 @@ import {
 import { useBle } from "@/context/BleContext";
 import { useColors } from "@/hooks/useColors";
 import { buildSOSPacket, formatSOSMessage } from "@/utils/sos";
+import { startEmergencySiren, stopEmergencySiren } from "@/utils/siren";
 
 type SOSPhase = "idle" | "arming" | "sending" | "sent" | "error";
 
@@ -111,6 +112,12 @@ export function SOSButton({ nodeId }: { nodeId: string }) {
     }
   }, [phase, cancelProgress]);
 
+  const cancelSOS = useCallback(async () => {
+    setPhase("idle");
+    stopRings();
+    await stopEmergencySiren();
+  }, [stopRings]);
+
   const fire = useCallback(async () => {
     setPhase("sending");
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -124,17 +131,20 @@ export function SOSButton({ nodeId }: { nodeId: string }) {
       setPhase("sent");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
+      startEmergencySiren().catch((e) => console.warn("[StarLight] Siren error:", e));
+
       const dest = count > 0 ? `${count} node${count !== 1 ? "s" : ""}` : "broadcast channel";
       Alert.alert(
         "🆘 SOS Beamed",
-        `Emergency status + GPS sent to ${dest} via AES-256 encrypted mesh.\n\n` +
+        `Emergency signal + GPS sent to ${dest} via AES-256 encrypted mesh.\n\n` +
           `📍 ${packet.lat.toFixed(6)}, ${packet.lng.toFixed(6)}\n` +
-          `🔋 Battery: ${packet.battery >= 0 ? `${packet.battery}%` : "N/A"} (${packet.batteryState})`,
+          `🔋 Battery: ${packet.battery >= 0 ? `${packet.battery}%` : "N/A"} (${packet.batteryState})\n\n` +
+          `🔊 Emergency siren active — plays through silent mode`,
         [
           {
             text: "Cancel SOS",
             style: "destructive",
-            onPress: () => { setPhase("idle"); stopRings(); },
+            onPress: cancelSOS,
           },
           { text: "Keep Active", style: "default" },
         ]
@@ -149,7 +159,7 @@ export function SOSButton({ nodeId }: { nodeId: string }) {
         [{ text: "OK", onPress: () => setPhase("idle") }]
       );
     }
-  }, [nodeId, broadcastSOS, stopRings]);
+  }, [nodeId, broadcastSOS, stopRings, cancelSOS]);
 
   const btnBg =
     phase === "sent" ? SOS_GREEN : phase === "error" ? colors.warning : SOS_RED;
