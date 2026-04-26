@@ -25,10 +25,11 @@ export type Message = {
   peerId: string;
   peerName: string;
   content: string;
-  type: "TEXT" | "GPS_PING" | "VOICE";
+  type: "TEXT" | "GPS_PING" | "VOICE" | "SOS";
   timestamp: number;
   outgoing: boolean;
   encrypted: boolean;
+  priority?: boolean;
 };
 
 type BleContextType = {
@@ -40,6 +41,7 @@ type BleContextType = {
   setEncryptionEnabled: (v: boolean) => void;
   sendMessage: (peerId: string, content: string, type?: Message["type"]) => void;
   broadcastLocation: (lat: number, lon: number) => void;
+  broadcastSOS: (sosPayload: string) => Promise<number>;
   userName: string;
   setUserName: (name: string) => void;
   clearMessages: () => void;
@@ -243,6 +245,54 @@ export function BleProvider({ children }: { children: React.ReactNode }) {
     [peers, sendMessage]
   );
 
+  const broadcastSOS = useCallback(
+    async (sosPayload: string): Promise<number> => {
+      const targets = peers.filter((p) => p.online);
+      const timestamp = Date.now();
+
+      let encryptedContent = sosPayload;
+      try {
+        encryptedContent = await encryptStarPacket(sosPayload);
+      } catch {}
+
+      const msgs: Message[] = targets.map((p) => ({
+        id: `sos-${timestamp}-${p.id}`,
+        peerId: p.id,
+        peerName: p.name,
+        content: sosPayload,
+        type: "SOS",
+        timestamp,
+        outgoing: true,
+        encrypted: true,
+        priority: true,
+      }));
+
+      if (msgs.length === 0) {
+        const broadcastMsg: Message = {
+          id: `sos-${timestamp}-broadcast`,
+          peerId: "BROADCAST",
+          peerName: "ALL NODES",
+          content: sosPayload,
+          type: "SOS",
+          timestamp,
+          outgoing: true,
+          encrypted: true,
+          priority: true,
+        };
+        msgs.push(broadcastMsg);
+      }
+
+      setMessages((prev) => {
+        const next = [...prev, ...msgs];
+        saveMessages(next);
+        return next;
+      });
+
+      return targets.length;
+    },
+    [peers, saveMessages]
+  );
+
   const setUserName = useCallback(async (name: string) => {
     setUserNameState(name);
     try {
@@ -268,6 +318,7 @@ export function BleProvider({ children }: { children: React.ReactNode }) {
         setEncryptionEnabled,
         sendMessage,
         broadcastLocation,
+        broadcastSOS,
         userName,
         setUserName,
         clearMessages,

@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MessageBubble } from "@/components/MessageBubble";
 import { MeshStatusBar } from "@/components/MeshStatusBar";
 import { PeerCard } from "@/components/PeerCard";
+import { SOSButton } from "@/components/SOSButton";
 import { type Message, type Peer, useBle } from "@/context/BleContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -279,25 +280,35 @@ export default function MeshScreen() {
         )}
       </View>
 
-      <FlatList
-        ref={flatListRef}
-        data={filteredMessages}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <MessageBubble message={item} />}
-        contentContainerStyle={[styles.messageList, { paddingBottom: 8 }]}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <MaterialCommunityIcons name="access-point-network" size={48} color={colors.border} />
-            <Text style={[styles.emptyTitle, { color: colors.mutedForeground }]}>
-              {selectedPeer ? `No messages with ${selectedPeer.name}` : "Mesh is listening..."}
-            </Text>
-            <Text style={[styles.emptyHint, { color: colors.mutedForeground }]}>
-              {selectedPeer ? "Send the first packet" : "Select a node above to start beaming"}
-            </Text>
-          </View>
-        }
-      />
+      <View style={{ flex: 1 }}>
+        <FlatList
+          ref={flatListRef}
+          data={filteredMessages}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <MessageBubble message={item} />}
+          contentContainerStyle={[styles.messageList, { paddingBottom: 8 }]}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <MaterialCommunityIcons name="access-point-network" size={48} color={colors.border} />
+              <Text style={[styles.emptyTitle, { color: colors.mutedForeground }]}>
+                {selectedPeer ? `No messages with ${selectedPeer.name}` : "Mesh is listening..."}
+              </Text>
+              <Text style={[styles.emptyHint, { color: colors.mutedForeground }]}>
+                {selectedPeer ? "Send the first packet" : "Select a node above to start beaming"}
+              </Text>
+            </View>
+          }
+        />
+
+        {/* Floating SOS button — top-right corner of feed */}
+        <View
+          pointerEvents="box-none"
+          style={[styles.sosOverlay, { backgroundColor: colors.background + "CC", borderColor: "rgba(255,23,68,0.25)" }]}
+        >
+          <SOSButton nodeId={selectedPeer?.id ?? "local"} />
+        </View>
+      </View>
 
       {/* ── Bottom composer area ─────────────────────────── */}
       <View
@@ -448,6 +459,16 @@ const styles = StyleSheet.create({
   emptyPeers: { textAlign: "center", padding: 12, fontSize: 13, fontFamily: "Inter_400Regular" },
   messageList: { paddingHorizontal: 14, paddingTop: 12, flexGrow: 1 },
   emptyState: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10, paddingTop: 80 },
+  sosOverlay: {
+    position: "absolute",
+    bottom: 16,
+    right: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: "center",
+  },
   emptyTitle: { fontSize: 16, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
   emptyHint: { fontSize: 13, textAlign: "center", paddingHorizontal: 40, fontFamily: "Inter_400Regular" },
 
