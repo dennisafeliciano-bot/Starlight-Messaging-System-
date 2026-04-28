@@ -28,7 +28,7 @@ const HOLD_MS = 1600;
 const SOS_RED = "#FF1744";
 const SOS_GREEN = "#00E676";
 
-export function SOSButton({ nodeId }: { nodeId: string }) {
+export function SOSButton({ nodeId, compact = false }: { nodeId: string; compact?: boolean }) {
   const colors = useColors();
   const { broadcastSOS, peers, sendMessage } = useBle();
 
@@ -227,11 +227,15 @@ export function SOSButton({ nodeId }: { nodeId: string }) {
 
   const ringColor = phase === "sent" ? SOS_GREEN : SOS_RED;
 
+  const btnSize  = compact ? 44 : 76;
+  const btnRadius = compact ? 22 : 38;
+  const iconSize  = compact ? 18 : 28;
+
   const ringStyle = (anim: Animated.Value) => ({
     position: "absolute" as const,
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: btnSize,
+    height: btnSize,
+    borderRadius: btnRadius,
     borderWidth: 2,
     borderColor: ringColor,
     opacity: anim.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0.85, 0.5, 0] }),
@@ -244,7 +248,7 @@ export function SOSButton({ nodeId }: { nodeId: string }) {
   });
 
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, compact && styles.wrapperCompact]}>
       {/* Expanding rings */}
       <Animated.View style={ringStyle(ring1)} />
       <Animated.View style={ringStyle(ring2)} />
@@ -255,6 +259,9 @@ export function SOSButton({ nodeId }: { nodeId: string }) {
           style={[
             styles.button,
             {
+              width: btnSize,
+              height: btnSize,
+              borderRadius: btnRadius,
               backgroundColor: btnBg,
               transform: [{ scale: pulseAnim }],
               shadowColor: btnBg,
@@ -263,61 +270,63 @@ export function SOSButton({ nodeId }: { nodeId: string }) {
           ]}
         >
           {phase === "sending" ? (
-            <MaterialCommunityIcons name="progress-clock" size={28} color="#fff" />
+            <MaterialCommunityIcons name="progress-clock" size={iconSize} color="#fff" />
           ) : phase === "sent" ? (
-            <MaterialCommunityIcons name="check-circle-outline" size={28} color="#fff" />
+            <MaterialCommunityIcons name="check-circle-outline" size={iconSize} color="#fff" />
           ) : phase === "error" ? (
-            <MaterialCommunityIcons name="alert-circle-outline" size={28} color="#fff" />
+            <MaterialCommunityIcons name="alert-circle-outline" size={iconSize} color="#fff" />
           ) : (
-            <Text style={styles.sosText}>SOS</Text>
+            <Text style={[styles.sosText, compact && styles.sosTextCompact]}>SOS</Text>
           )}
         </Animated.View>
       </Pressable>
 
       {/* Arming progress bar */}
       {phase === "arming" && (
-        <View style={styles.progressTrack}>
+        <View style={[styles.progressTrack, compact && styles.progressTrackCompact]}>
           <Animated.View
             style={[styles.progressFill, { width: progressWidth, backgroundColor: SOS_RED }]}
           />
         </View>
       )}
 
-      <Text
-        style={[
-          styles.label,
-          {
-            color:
-              phase === "sent"
-                ? SOS_GREEN
-                : phase === "error"
-                ? colors.warning
-                : colors.mutedForeground,
-          },
-        ]}
-      >
-        {phase === "idle" && "Hold to arm"}
-        {phase === "arming" && "Arming SOS..."}
-        {phase === "sending" && "Beaming..."}
-        {phase === "sent" && `Active · ${sentCount > 0 ? sentCount + " nodes" : "broadcast"}`}
-        {phase === "error" && "Failed — retry"}
-      </Text>
+      {!compact && (
+        <>
+          <Text
+            style={[
+              styles.label,
+              {
+                color:
+                  phase === "sent"
+                    ? SOS_GREEN
+                    : phase === "error"
+                    ? colors.warning
+                    : colors.mutedForeground,
+              },
+            ]}
+          >
+            {phase === "idle" && "Hold to arm"}
+            {phase === "arming" && "Arming SOS..."}
+            {phase === "sending" && "Beaming..."}
+            {phase === "sent" && `Active · ${sentCount > 0 ? sentCount + " nodes" : "broadcast"}`}
+            {phase === "error" && "Failed — retry"}
+          </Text>
 
-      <Text style={[styles.peerHint, { color: colors.mutedForeground }]}>
-        {onlinePeers > 0
-          ? `${onlinePeers} node${onlinePeers !== 1 ? "s" : ""} reachable`
-          : "No nodes · will broadcast"}
-      </Text>
+          <Text style={[styles.peerHint, { color: colors.mutedForeground }]}>
+            {onlinePeers > 0
+              ? `${onlinePeers} node${onlinePeers !== 1 ? "s" : ""} reachable`
+              : "No nodes · will broadcast"}
+          </Text>
+        </>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrapper: { alignItems: "center", gap: 8 },
+  wrapperCompact: { gap: 4 },
   button: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
     alignItems: "center",
     justifyContent: "center",
     shadowOffset: { width: 0, height: 0 },
@@ -332,6 +341,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_800ExtraBold",
     letterSpacing: 2,
   },
+  sosTextCompact: { fontSize: 11, letterSpacing: 1.5 },
   progressTrack: {
     width: 110,
     height: 3,
@@ -339,6 +349,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,23,68,0.2)",
     overflow: "hidden",
   },
+  progressTrackCompact: { width: 44 },
   progressFill: { height: "100%", borderRadius: 2 },
   label: { fontSize: 11, fontFamily: "Inter_500Medium", letterSpacing: 0.5 },
   peerHint: { fontSize: 10, fontFamily: "Inter_400Regular" },

@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { BackboneStatusBar } from "@/components/BackboneStatusBar";
 import { MessageBubble } from "@/components/MessageBubble";
 import { MeshStatusBar } from "@/components/MeshStatusBar";
 import { PeerCard } from "@/components/PeerCard";
@@ -302,13 +303,6 @@ export default function MeshScreen() {
           }
         />
 
-        {/* Floating SOS button — top-right corner of feed */}
-        <View
-          pointerEvents="box-none"
-          style={[styles.sosOverlay, { backgroundColor: colors.background + "CC", borderColor: "rgba(255,23,68,0.25)" }]}
-        >
-          <SOSButton nodeId={selectedPeer?.id ?? "local"} />
-        </View>
       </View>
 
       {/* ── Bottom composer area ─────────────────────────── */}
@@ -318,6 +312,14 @@ export default function MeshScreen() {
           { backgroundColor: colors.background, paddingBottom: insets.bottom + webBotPad + 4, borderTopColor: colors.border },
         ]}
       >
+        {/* Backbone status bar — SOS button left, glassmorphism link/encryption info right */}
+        <View style={styles.backboneRow}>
+          <SOSButton nodeId={selectedPeer?.id ?? "local"} compact />
+          <View style={styles.backboneBarWrap}>
+            <BackboneStatusBar />
+          </View>
+        </View>
+
         {/* Toolbar — inline on Android/web, InputAccessoryView on iOS */}
         {Platform.OS !== "ios" && <ToolbarRow />}
 
@@ -463,21 +465,20 @@ const styles = StyleSheet.create({
   emptyPeers: { textAlign: "center", padding: 12, fontSize: 13, fontFamily: "Inter_400Regular" },
   messageList: { paddingHorizontal: 14, paddingTop: 12, flexGrow: 1 },
   emptyState: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10, paddingTop: 80 },
-  sosOverlay: {
-    position: "absolute",
-    bottom: 16,
-    right: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    borderWidth: 1,
-    alignItems: "center",
-  },
   emptyTitle: { fontSize: 16, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
   emptyHint: { fontSize: 13, textAlign: "center", paddingHorizontal: 40, fontFamily: "Inter_400Regular" },
 
   /* ── Composer ── */
   inputWrap: { borderTopWidth: 1, gap: 0 },
+  backboneRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 6,
+    gap: 10,
+  },
+  backboneBarWrap: { flex: 1 },
 
   toolbar: {
     flexDirection: "row",

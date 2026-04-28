@@ -1,0 +1,61 @@
+struct StarlightOverlayView: View {
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            // Your main mesh/map background goes here
+            Color.black.ignoresSafeArea()
+
+            VStack {
+                Spacer()
+                
+                HStack(alignment: .bottom) {
+                    // 1. SOS Button - Moved closer to the sidebar
+                    Button(action: { /* Trigger SOS */ }) {
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 70, height: 70)
+                            .overlay(Text("SOS").bold().foregroundColor(.white))
+                            .shadow(color: .red.opacity(0.5), radius: 10)
+                    }
+                    .padding(.leading, 20) // Adjust this to get closer to your sidebar
+                    
+                    Spacer()
+                    
+                    // 2. The "Backbone" Status Bar
+                    HStack(spacing: 15) {
+                        VStack(alignment: .leading) {
+                            Text("AES-256").font(.caption2).foregroundColor(.green)
+                            Text("Packet loss: 0%").font(.caption2).foregroundColor(.white)
+                        }
+                        
+                        Divider().background(Color.white.opacity(0.3)).frame(height: 20)
+                        
+                        VStack(alignment: .leading) {
+                            Text("Nodes Reachable: 6").font(.caption2).foregroundColor(.white)
+                            Text("Link: Nominal").font(.caption2).foregroundColor(.blue)
+                        }
+                    }
+                    .padding(.horizontal, 15)
+                    .padding(.vertical, 10)
+                    // Glassmorphism effect so people can see "behind" it
+                    .background(BlurView(style: .systemUltraThinMaterialDark))
+                    .cornerRadius(15)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 15)
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    )
+                    .padding(.trailing, 10)
+                }
+                .padding(.bottom, 30) // Sitting just above the home indicator
+            }
+        }
+    }
+}
+
+// Helper for the blur effect
+struct BlurView: UIViewRepresentable {
+    var style: UIBlurEffect.Style
+    func makeUIView(context: Context) -> UIVisualEffectView {
+        return UIVisualEffectView(effect: UIBlurEffect(style: style))
+    }
+    func updateUIView(_ uiView: UIVisualEffectView, context: Context) {}
+}
