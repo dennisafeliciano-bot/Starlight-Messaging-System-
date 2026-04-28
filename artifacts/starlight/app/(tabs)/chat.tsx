@@ -17,17 +17,20 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { BackboneStatusBar } from "@/components/BackboneStatusBar";
 import {
   StarLightContactPicker,
   type StarContact,
 } from "@/components/StarLightContactPicker";
 import { StarLightNavOverlay } from "@/components/StarLightNavOverlay";
+import { SOSButton } from "@/components/SOSButton";
 import { type Message, type Peer, useBle } from "@/context/BleContext";
 import { useColors } from "@/hooks/useColors";
 
 const INPUT_ACCESSORY_ID = "starlight-chat-input";
 
 const TAB_BAR_H = Platform.OS === "web" ? 84 : Platform.OS === "android" ? 60 : 50;
+const BACKBONE_ROW_H = 58; // compact SOS (44) + vertical padding
 
 const QUICK_EMOJIS = [
   "👍","🔒","⚡","📡","🗺️","🚨","✅","❌","👀","💬","🛰️","🔇","🔴","🟢","⚠️","🏁",
@@ -154,7 +157,7 @@ export default function ChatScreen() {
   const composerBottom = TAB_BAR_H + (Platform.OS === "ios" ? insets.bottom : 0);
 
   // Total height the composer takes up (toolbar + optional panels + pill + padding)
-  const composerReserved = 120 + (showEmoji ? 56 : 0) + (showAI ? 90 : 0) + (replyTo ? 42 : 0);
+  const composerReserved = 120 + BACKBONE_ROW_H + (showEmoji ? 56 : 0) + (showAI ? 90 : 0) + (replyTo ? 42 : 0);
 
   const threadMessages = selectedPeer
     ? messages.filter((m) => m.peerId === selectedPeer.id)
@@ -514,6 +517,14 @@ export default function ChatScreen() {
           </View>
         )}
 
+        {/* Backbone control bar — compact SOS left, glassmorphism link data right */}
+        <View style={styles.backboneRow}>
+          <SOSButton nodeId="local" compact />
+          <View style={styles.backboneBarWrap}>
+            <BackboneStatusBar />
+          </View>
+        </View>
+
         {/* Pill input row */}
         <View style={[styles.inputRow, { backgroundColor: "rgba(13,17,23,0.97)", borderTopColor: colors.border }]}>
           <View style={[styles.pill, { backgroundColor: colors.card, borderColor: selectedPeer ? colors.primary : colors.border }]}>
@@ -668,6 +679,16 @@ const styles = StyleSheet.create({
   },
   replyInner: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
   replyText: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
+
+  backboneRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 6,
+    gap: 10,
+  },
+  backboneBarWrap: { flex: 1 },
 
   inputRow: {
     flexDirection: "row",
