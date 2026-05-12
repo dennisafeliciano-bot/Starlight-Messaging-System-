@@ -129,7 +129,6 @@ const server = http.createServer((req, res) => {
   serveStaticFile(pathname, res);
 });
 
-const port = parseInt(process.env.PORT || "8080", 10);
-server.listen(port, "0.0.0.0", () => {
-  console.log(`Serving static Expo build on port ${port}`);
+server.listen(process.env.PORT || 8080, "0.0.0.0", () => {
+  console.log("STARLIGHT ONLINE — bound 0.0.0.0:" + (process.env.PORT || 8080));
 });
