@@ -2,7 +2,7 @@
   "expo": {
     "name": "Starlight Messaging System",
     "slug": "starlight",
-    "version": "2.1.0",
+    "version": "2.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "starlight",
@@ -15,11 +15,11 @@
     },
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "11",
+      "buildNumber": "15",
       "bundleIdentifier": "com.starlightmessaging.app"
     },
     "android": {
-      "versionCode": 11,
+      "versionCode": 15,
       "package": "com.starlightmessaging.app"
     },
     "web": {
