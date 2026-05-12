@@ -15,11 +15,11 @@
     },
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "15",
+      "buildNumber": "30",
       "bundleIdentifier": "com.starlightmessaging.app"
     },
     "android": {
-      "versionCode": 15,
+      "versionCode": 30,
       "package": "com.starlightmessaging.app"
     },
     "web": {
