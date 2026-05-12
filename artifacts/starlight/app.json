@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "StarLight",
+    "name": "Starlight Messaging System",
     "slug": "starlight",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "starlight",
@@ -14,9 +14,12 @@
       "backgroundColor": "#060D1A"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "buildNumber": "2"
     },
-    "android": {},
+    "android": {
+      "versionCode": 2
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
