@@ -2,6 +2,7 @@
   "expo": {
     "name": "Starlight Messaging System",
     "slug": "starlight",
+    "owner": "dfeliciano51",
     "version": "2.3.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -38,6 +39,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "6d5e6e48-4242-46c7-b29e-508f9142e876"
+      }
     }
   }
 }
