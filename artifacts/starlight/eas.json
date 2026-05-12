@@ -8,10 +8,6 @@
       "ios": {
         "resourceClass": "m-medium"
       },
-      "android": {
-        "buildType": "app-bundle",
-        "withoutCredentials": true
-      },
       "env": {
         "EXPO_PUBLIC_DOMAIN": "star-light-mesh.replit.app"
       }
@@ -20,7 +16,7 @@
   "submit": {
     "production-ios": {
       "ios": {
-        "appleId": "YOUR_APPLE_ID@email.com",
+        "appleId": "dennis.a.feliciano@gmail.com",
         "ascAppId": "YOUR_APP_STORE_CONNECT_APP_ID",
         "appleTeamId": "YOUR_APPLE_TEAM_ID"
       }
