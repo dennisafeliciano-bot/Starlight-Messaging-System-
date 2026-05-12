@@ -1,34 +1,35 @@
+// ─── StarLight 2.0 — Deep Blue + Gold palette ─────────────────────────────────
 const colors = {
   light: {
-    text: "#E8F4FF",
-    tint: "#4FC3F7",
+    text: "#EEF2FF",
+    tint: "#D4AF37",
 
     background: "#060D1A",
-    foreground: "#E8F4FF",
+    foreground: "#EEF2FF",
 
-    card: "#0D1F36",
-    cardForeground: "#E8F4FF",
+    card: "#0B1A30",
+    cardForeground: "#EEF2FF",
 
-    primary: "#4FC3F7",
+    primary: "#D4AF37",
     primaryForeground: "#060D1A",
 
-    secondary: "#112240",
-    secondaryForeground: "#A8C8E8",
+    secondary: "#0F2040",
+    secondaryForeground: "#A8BBD4",
 
-    muted: "#0A1628",
-    mutedForeground: "#5A7A9A",
+    muted: "#091528",
+    mutedForeground: "#5C7A99",
 
-    accent: "#00E5FF",
+    accent: "#F4C842",
     accentForeground: "#060D1A",
 
     destructive: "#FF4D6D",
     destructiveForeground: "#ffffff",
 
-    border: "#1A2F4A",
-    input: "#112240",
+    border: "#162B45",
+    input: "#0F2040",
 
     online: "#00E676",
-    warning: "#FFB300",
+    warning: "#FF8C00",
     signal: "#4FC3F7",
   },
 

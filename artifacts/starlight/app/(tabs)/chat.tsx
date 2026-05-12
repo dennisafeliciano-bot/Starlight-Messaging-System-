@@ -446,6 +446,11 @@ export default function ChatScreen() {
             renderItem={({ item }) => <ChatBubble message={item} colors={colors} />}
             contentContainerStyle={styles.messageList}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            initialNumToRender={12}
+            maxToRenderPerBatch={8}
+            windowSize={8}
+            updateCellsBatchingPeriod={40}
+            removeClippedSubviews={true}
             ListEmptyComponent={
               <View style={styles.emptyThread}>
                 <MaterialCommunityIcons name="lock-outline" size={32} color={colors.border} />

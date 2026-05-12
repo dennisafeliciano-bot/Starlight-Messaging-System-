@@ -303,8 +303,11 @@ export function StarLightContactPicker({ visible, onClose, onSelect, alreadyAdde
             renderItem={renderContact}
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ paddingBottom: 16 }}
-            initialNumToRender={20}
-            maxToRenderPerBatch={30}
+            initialNumToRender={15}
+            maxToRenderPerBatch={10}
+            windowSize={8}
+            updateCellsBatchingPeriod={40}
+            removeClippedSubviews={true}
           />
         )}
 

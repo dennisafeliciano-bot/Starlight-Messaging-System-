@@ -290,6 +290,11 @@ export default function MeshScreen() {
           renderItem={({ item }) => <MessageBubble message={item} />}
           contentContainerStyle={[styles.messageList, { paddingBottom: 8 }]}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          initialNumToRender={12}
+          maxToRenderPerBatch={8}
+          windowSize={8}
+          updateCellsBatchingPeriod={40}
+          removeClippedSubviews={true}
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <MaterialCommunityIcons name="access-point-network" size={48} color={colors.border} />
