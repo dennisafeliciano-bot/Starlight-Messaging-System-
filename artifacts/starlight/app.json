@@ -7,12 +7,12 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "starlight",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#060D1A"
+      "backgroundColor": "#0D0D0D"
     },
     "ios": {
       "supportsTablet": false,
