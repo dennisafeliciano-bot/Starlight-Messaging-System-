@@ -52,12 +52,12 @@ export function MessageBubble({ message }: Props) {
               <Ionicons
                 name="lock-closed"
                 size={9}
-                color={isOut ? "rgba(6,13,26,0.55)" : colors.online}
+                color={isOut ? "rgba(13,13,13,0.55)" : colors.online}
               />
               <Text
                 style={[
                   styles.encryptLabel,
-                  { color: isOut ? "rgba(6,13,26,0.55)" : colors.online },
+                  { color: isOut ? "rgba(13,13,13,0.55)" : colors.online },
                 ]}
               >
                 AES-256
