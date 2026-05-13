@@ -11,7 +11,7 @@ on:
 jobs:
   build:
     name: Build iOS for App Store
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -35,13 +35,58 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
+      - name: Install EAS CLI globally
+        run: npm install -g eas-cli
+
       - name: Write Apple ASC API Key to file
         run: |
           echo "${{ secrets.APPLE_ASC_KEY_P8 }}" > /tmp/AuthKey_QCAYN569MP.p8
           chmod 600 /tmp/AuthKey_QCAYN569MP.p8
 
-      - name: Install EAS CLI globally
-        run: npm install -g eas-cli
+      - name: Clear stale iOS Distribution Certificate from Expo
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          node -e "
+          const https = require('https');
+          const token = process.env.EXPO_TOKEN;
+
+          function gql(query) {
+            return new Promise((resolve) => {
+              const data = JSON.stringify({ query });
+              const req = https.request({
+                hostname: 'api.expo.dev',
+                path: '/graphql',
+                method: 'POST',
+                headers: {
+                  'Authorization': 'Bearer ' + token,
+                  'Content-Type': 'application/json',
+                  'expo-platform': 'ios',
+                  'Content-Length': Buffer.byteLength(data)
+                }
+              }, res => {
+                let body = '';
+                res.on('data', c => body += c);
+                res.on('end', () => resolve(JSON.parse(body)));
+              });
+              req.write(data);
+              req.end();
+            });
+          }
+
+          async function main() {
+            const r = await gql('{ account { byName(accountName: \"dfeliciano51\") { appleDistributionCertificates { id serialNumber } } } }');
+            const certs = r.data && r.data.account && r.data.account.byName && r.data.account.byName.appleDistributionCertificates || [];
+            console.log('Found ' + certs.length + ' distribution certificate(s)');
+            for (const cert of certs) {
+              console.log('Deleting cert id=' + cert.id + ' serial=' + cert.serialNumber);
+              const del = await gql('mutation { deleteAppleDistributionCertificate(appleDistributionCertificateId: \"' + cert.id + '\") { id } }');
+              console.log('Result: ' + JSON.stringify(del.data || del.errors));
+            }
+            console.log('Done - EAS will create fresh credentials on next build');
+          }
+          main().catch(e => { console.log('Warning (non-fatal): ' + e.message); process.exit(0); });
+          "
 
       - name: Run EAS Build
         working-directory: artifacts/starlight
@@ -50,7 +95,7 @@ jobs:
           EXPO_ASC_API_KEY_ISSUER_ID: 37db5320-f7a1-4c2f-a01d-9d1ee4e2c409
           EXPO_ASC_API_KEY_PATH: /tmp/AuthKey_QCAYN569MP.p8
           EAS_BUILD_NO_EXPO_GO_WARNING: "true"
-        run: npx eas-cli build --platform ios --profile production --non-interactive --local
+        run: npx eas-cli build --platform ios --profile production --non-interactive
 
       - name: Show build URL
         run: |
