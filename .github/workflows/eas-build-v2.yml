@@ -38,66 +38,195 @@ jobs:
       - name: Install EAS CLI globally
         run: npm install -g eas-cli
 
-      - name: Write Apple ASC API Key to file
+      - name: Write Apple ASC API Key
         run: |
           echo "${{ secrets.APPLE_ASC_KEY_P8 }}" > /tmp/AuthKey_QCAYN569MP.p8
           chmod 600 /tmp/AuthKey_QCAYN569MP.p8
 
-      - name: Clear stale iOS Distribution Certificate from Expo
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      - name: Bootstrap iOS credentials via Apple ASC API
         run: |
-          node -e "
-          const https = require('https');
-          const token = process.env.EXPO_TOKEN;
+          node << 'EOF'
+          const https  = require('https');
+          const crypto = require('crypto');
+          const fs     = require('fs');
+          const { execSync } = require('child_process');
 
-          function gql(query) {
-            return new Promise((resolve) => {
-              const data = JSON.stringify({ query });
-              const req = https.request({
-                hostname: 'api.expo.dev',
-                path: '/graphql',
-                method: 'POST',
+          const KEY_ID    = 'QCAYN569MP';
+          const ISSUER_ID = '37db5320-f7a1-4c2f-a01d-9d1ee4e2c409';
+          const BUNDLE_ID = 'com.starlight.enterprise';
+          const P8        = fs.readFileSync('/tmp/AuthKey_QCAYN569MP.p8', 'utf8');
+          const P12_PASS  = 'starlight2026';
+
+          function makeJWT() {
+            const hdr = Buffer.from(JSON.stringify({ alg: 'ES256', kid: KEY_ID, typ: 'JWT' })).toString('base64url');
+            const now = Math.floor(Date.now() / 1000);
+            const pay = Buffer.from(JSON.stringify({ iss: ISSUER_ID, iat: now, exp: now + 1100, aud: 'appstoreconnect-v1' })).toString('base64url');
+            const sign = crypto.createSign('SHA256');
+            sign.update(hdr + '.' + pay);
+            const sig = sign.sign({ key: P8, dsaEncoding: 'ieee-p1363' }, 'base64url');
+            return hdr + '.' + pay + '.' + sig;
+          }
+
+          function asc(method, path, body) {
+            return new Promise((resolve, reject) => {
+              const data = body ? JSON.stringify(body) : null;
+              const jwt  = makeJWT();
+              const req  = https.request({
+                hostname: 'api.appstoreconnect.apple.com', path, method,
                 headers: {
-                  'Authorization': 'Bearer ' + token,
-                  'Content-Type': 'application/json',
-                  'expo-platform': 'ios',
-                  'Content-Length': Buffer.byteLength(data)
+                  'Authorization': 'Bearer ' + jwt,
+                  'Content-Type':  'application/json',
+                  ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {})
                 }
               }, res => {
-                let body = '';
-                res.on('data', c => body += c);
-                res.on('end', () => resolve(JSON.parse(body)));
+                let b = '';
+                res.on('data', c => b += c);
+                res.on('end', () => {
+                  try { resolve(JSON.parse(b)); } catch { resolve({}); }
+                });
               });
-              req.write(data);
+              req.on('error', reject);
+              if (data) req.write(data);
               req.end();
             });
           }
 
           async function main() {
-            const r = await gql('{ account { byName(accountName: \"dfeliciano51\") { appleDistributionCertificates { id serialNumber } } } }');
-            const certs = r.data && r.data.account && r.data.account.byName && r.data.account.byName.appleDistributionCertificates || [];
-            console.log('Found ' + certs.length + ' distribution certificate(s)');
-            for (const cert of certs) {
-              console.log('Deleting cert id=' + cert.id + ' serial=' + cert.serialNumber);
-              const del = await gql('mutation { deleteAppleDistributionCertificate(appleDistributionCertificateId: \"' + cert.id + '\") { id } }');
-              console.log('Result: ' + JSON.stringify(del.data || del.errors));
+            // 1. Generate RSA key + CSR
+            console.log('Generating private key and CSR...');
+            execSync('openssl genrsa -out /tmp/star.key 2048 2>/dev/null');
+            execSync('openssl req -new -key /tmp/star.key -out /tmp/star.csr -subj "/C=US/O=Starlight/CN=iOS Distribution" 2>/dev/null');
+            const csrPem = fs.readFileSync('/tmp/star.csr', 'utf8');
+            const csrContent = csrPem
+              .split('\n')
+              .filter(l => !l.startsWith('-----'))
+              .join('');
+
+            // 2. List existing dist certs — delete oldest if at limit (max 2)
+            console.log('Checking existing distribution certificates...');
+            const listResp = await asc('GET', '/v1/certificates?filter[certificateType]=IOS_DISTRIBUTION&limit=10');
+            const existing = listResp.data || [];
+            console.log('Existing dist certs:', existing.length);
+
+            if (existing.length >= 2) {
+              // Delete the oldest to make room
+              const oldest = existing.sort((a, b) =>
+                new Date(a.attributes.expirationDate) - new Date(b.attributes.expirationDate))[0];
+              console.log('At limit — deleting oldest cert:', oldest.id);
+              await asc('DELETE', '/v1/certificates/' + oldest.id);
             }
-            console.log('Done - EAS will create fresh credentials on next build');
+
+            // 3. Create new distribution certificate
+            console.log('Creating new distribution certificate...');
+            const createResp = await asc('POST', '/v1/certificates', {
+              data: {
+                type: 'certificates',
+                attributes: { csrContent, certificateType: 'IOS_DISTRIBUTION' }
+              }
+            });
+
+            if (!createResp.data) {
+              console.error('Failed to create cert:', JSON.stringify(createResp.errors || createResp));
+              process.exit(1);
+            }
+
+            const certContent = createResp.data.attributes.certificateContent;
+            const certId      = createResp.data.id;
+            console.log('Created certificate:', certId);
+
+            // 4. Write cert DER + combine with private key into .p12
+            fs.writeFileSync('/tmp/star.cer', Buffer.from(certContent, 'base64'));
+            try {
+              execSync('openssl pkcs12 -export -in /tmp/star.cer -inkey /tmp/star.key -out /tmp/star.p12 -passout pass:' + P12_PASS + ' 2>/dev/null');
+            } catch {
+              execSync('openssl pkcs12 -export -in /tmp/star.cer -inkey /tmp/star.key -out /tmp/star.p12 -passout pass:' + P12_PASS + ' -legacy 2>/dev/null');
+            }
+            console.log('.p12 created');
+
+            // 5. Find bundle ID record in ASC
+            console.log('Looking up bundle ID', BUNDLE_ID, '...');
+            const bundlesResp = await asc('GET', '/v1/bundleIds?filter[identifier]=' + encodeURIComponent(BUNDLE_ID) + '&limit=5');
+            const bundle = (bundlesResp.data || [])[0];
+            if (!bundle) {
+              console.error('Bundle ID not found in App Store Connect. Available:', JSON.stringify((bundlesResp.data||[]).map(b=>b.attributes.identifier)));
+              process.exit(1);
+            }
+            console.log('Bundle ID record:', bundle.id, bundle.attributes.identifier);
+
+            // 6. Find or create App Store provisioning profile
+            console.log('Looking for existing App Store profile...');
+            const profResp = await asc('GET',
+              '/v1/profiles?filter[profileType]=IOS_APP_STORE&filter[bundleId]=' + bundle.id + '&limit=10&include=certificates');
+            const now  = new Date();
+            const valid = (profResp.data || []).filter(p =>
+              p.attributes.profileState === 'ACTIVE' &&
+              new Date(p.attributes.expirationDate) > now
+            );
+
+            let profileContent;
+            if (valid.length > 0) {
+              console.log('Using existing profile:', valid[0].id);
+              profileContent = valid[0].attributes.profileContent;
+            } else {
+              console.log('Creating new App Store distribution profile...');
+              const createProfResp = await asc('POST', '/v1/profiles', {
+                data: {
+                  type: 'profiles',
+                  attributes: {
+                    name: 'StarLight AppStore ' + Date.now(),
+                    profileType: 'IOS_APP_STORE'
+                  },
+                  relationships: {
+                    bundleId:     { data: { type: 'bundleIds',    id: bundle.id } },
+                    certificates: { data: [{ type: 'certificates', id: certId }] },
+                    devices:      { data: [] }
+                  }
+                }
+              });
+              if (!createProfResp.data) {
+                console.error('Failed to create profile:', JSON.stringify(createProfResp.errors || createProfResp));
+                process.exit(1);
+              }
+              profileContent = createProfResp.data.attributes.profileContent;
+              console.log('Profile created:', createProfResp.data.id);
+            }
+
+            // 7. Write provisioning profile
+            fs.writeFileSync('/tmp/star.mobileprovision', Buffer.from(profileContent, 'base64'));
+            console.log('Provisioning profile saved');
+
+            // 8. Write credentials.json for EAS local credentials
+            const creds = {
+              ios: {
+                distributionCertificate: { path: '/tmp/star.p12', password: P12_PASS },
+                provisioningProfilePath: '/tmp/star.mobileprovision'
+              }
+            };
+            fs.writeFileSync('artifacts/starlight/credentials.json', JSON.stringify(creds, null, 2));
+            console.log('credentials.json written — ready for local EAS build');
           }
-          main().catch(e => { console.log('Warning (non-fatal): ' + e.message); process.exit(0); });
+
+          main().catch(e => { console.error('FATAL:', e.message, e.stack); process.exit(1); });
+          EOF
+
+      - name: Set credentialsSource to local in eas.json
+        working-directory: artifacts/starlight
+        run: |
+          node -e "
+          const fs = require('fs');
+          const eas = JSON.parse(fs.readFileSync('eas.json','utf8'));
+          eas.build.production.credentialsSource = 'local';
+          fs.writeFileSync('eas.json', JSON.stringify(eas, null, 2));
+          console.log('eas.json updated: credentialsSource=local');
           "
 
       - name: Run EAS Build
         working-directory: artifacts/starlight
         env:
-          EXPO_ASC_API_KEY_ID: QCAYN569MP
-          EXPO_ASC_API_KEY_ISSUER_ID: 37db5320-f7a1-4c2f-a01d-9d1ee4e2c409
-          EXPO_ASC_API_KEY_PATH: /tmp/AuthKey_QCAYN569MP.p8
           EAS_BUILD_NO_EXPO_GO_WARNING: "true"
         run: npx eas-cli build --platform ios --profile production --non-interactive
 
       - name: Show build URL
         run: |
-          echo "Build queued! View at:"
+          echo "Build submitted to Expo cloud:"
           echo "https://expo.dev/accounts/dfeliciano51/projects/starlight/builds"
