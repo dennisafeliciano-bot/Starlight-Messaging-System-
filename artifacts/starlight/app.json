@@ -17,14 +17,14 @@
     "ios": {
       "supportsTablet": false,
       "buildNumber": "45",
-      "bundleIdentifier": "com.starlightmessaging.app",
+      "bundleIdentifier": "com.starlight.enterprise",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "versionCode": 40,
-      "package": "com.starlightmessaging.app"
+      "package": "com.starlight.enterprise"
     },
     "web": {
       "favicon": "./assets/images/icon.png"
