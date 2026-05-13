@@ -4,6 +4,16 @@
     "appVersionSource": "local"
   },
   "build": {
+    "production": {
+      "distribution": "store",
+      "credentialsSource": "remote",
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "star-light-mesh.replit.app"
+      }
+    },
     "production-ios": {
       "distribution": "store",
       "credentialsSource": "remote",
@@ -16,6 +26,13 @@
     }
   },
   "submit": {
+    "production": {
+      "ios": {
+        "appleId": "dennis.a.feliciano@gmail.com",
+        "ascAppId": "YOUR_APP_STORE_CONNECT_APP_ID",
+        "appleTeamId": "YOUR_APPLE_TEAM_ID"
+      }
+    },
     "production-ios": {
       "ios": {
         "appleId": "dennis.a.feliciano@gmail.com",
