@@ -1,36 +1,36 @@
-// ─── StarLight 2.0 — Deep Blue + Gold palette ─────────────────────────────────
+// ─── StarLight 3.0 — High-Contrast Dark Mode · Electric Yellow · Crimson Red ──
 const colors = {
   light: {
-    text: "#EEF2FF",
-    tint: "#D4AF37",
+    text: "#F5F5F5",
+    tint: "#FFFF00",
 
-    background: "#060D1A",
-    foreground: "#EEF2FF",
+    background: "#0D0D0D",
+    foreground: "#F5F5F5",
 
-    card: "#0B1A30",
-    cardForeground: "#EEF2FF",
+    card: "#1A1A1A",
+    cardForeground: "#F5F5F5",
 
-    primary: "#D4AF37",
-    primaryForeground: "#060D1A",
+    primary: "#FFFF00",          // Electric Yellow — buttons, icons, active states
+    primaryForeground: "#0D0D0D",
 
-    secondary: "#0F2040",
-    secondaryForeground: "#A8BBD4",
+    secondary: "#1E1E1E",
+    secondaryForeground: "#A0A0A0",
 
-    muted: "#091528",
-    mutedForeground: "#5C7A99",
+    muted: "#141414",
+    mutedForeground: "#606060",
 
-    accent: "#F4C842",
-    accentForeground: "#060D1A",
+    accent: "#FF0000",           // Crimson Red — alerts, delete, warnings
+    accentForeground: "#ffffff",
 
-    destructive: "#FF4D6D",
+    destructive: "#FF0000",
     destructiveForeground: "#ffffff",
 
-    border: "#162B45",
-    input: "#0F2040",
+    border: "#2A2A2A",
+    input: "#1E1E1E",
 
-    online: "#00E676",
-    warning: "#FF8C00",
-    signal: "#4FC3F7",
+    online: "#22C55E",
+    warning: "#F59E0B",
+    signal: "#38BDF8",
   },
 
   radius: 12,
