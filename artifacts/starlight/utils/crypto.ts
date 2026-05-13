@@ -1,26 +1,23 @@
-const MASTER_KEY = "STARLIGHT-SECURE-LLC-2026";
+// ─── StarLight AES-256-GCM — fast, standard, lightweight ─────────────────────
+// Uses SHA-256 key derivation (single hash, no PBKDF2 iterations) for speed.
+// AES-GCM provides both encryption and authentication in one pass.
 
-async function deriveKey(keyString: string): Promise<CryptoKey> {
+const MASTER_KEY_STRING = "STARLIGHT-SECURE-LLC-2026";
+
+let _cachedKey: CryptoKey | null = null;
+
+async function getKey(): Promise<CryptoKey> {
+  if (_cachedKey) return _cachedKey;
   const enc = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey(
+  const raw = await crypto.subtle.digest("SHA-256", enc.encode(MASTER_KEY_STRING));
+  _cachedKey = await crypto.subtle.importKey(
     "raw",
-    enc.encode(keyString),
-    { name: "PBKDF2" },
-    false,
-    ["deriveKey"]
-  );
-  return crypto.subtle.deriveKey(
-    {
-      name: "PBKDF2",
-      salt: enc.encode("starlight-salt-2026"),
-      iterations: 100000,
-      hash: "SHA-256",
-    },
-    keyMaterial,
-    { name: "AES-CBC", length: 256 },
+    raw,
+    { name: "AES-GCM" },
     false,
     ["encrypt", "decrypt"]
   );
+  return _cachedKey;
 }
 
 function bufferToBase64(buffer: ArrayBuffer): string {
@@ -42,28 +39,27 @@ function base64ToBuffer(base64: string): ArrayBuffer {
 }
 
 export async function encryptStarPacket(dataString: string): Promise<string> {
-  const key = await deriveKey(MASTER_KEY);
-  const iv = crypto.getRandomValues(new Uint8Array(16));
-  const enc = new TextEncoder();
+  const key = await getKey();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
   const cipher = await crypto.subtle.encrypt(
-    { name: "AES-CBC", iv },
+    { name: "AES-GCM", iv },
     key,
-    enc.encode(dataString)
+    new TextEncoder().encode(dataString)
   );
   return JSON.stringify({
-    cipher: bufferToBase64(cipher),
+    c: bufferToBase64(cipher),
     iv: bufferToBase64(iv.buffer),
   });
 }
 
 export async function decryptStarPacket(encryptedJson: string): Promise<string | null> {
   try {
-    const { cipher, iv } = JSON.parse(encryptedJson);
-    const key = await deriveKey(MASTER_KEY);
+    const { c, iv } = JSON.parse(encryptedJson);
+    const key = await getKey();
     const decrypted = await crypto.subtle.decrypt(
-      { name: "AES-CBC", iv: base64ToBuffer(iv) },
+      { name: "AES-GCM", iv: base64ToBuffer(iv) },
       key,
-      base64ToBuffer(cipher)
+      base64ToBuffer(c)
     );
     return new TextDecoder().decode(decrypted);
   } catch {
