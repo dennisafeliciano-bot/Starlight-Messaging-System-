@@ -38,46 +38,94 @@ jobs:
       - name: Install EAS CLI globally
         run: npm install -g eas-cli
 
-      - name: Write Apple ASC API Key
+      - name: Validate required secrets are present
         run: |
-          printf '%s' '${{ secrets.APPLE_ASC_KEY_P8 }}' > /tmp/AuthKey_QCAYN569MP.p8
-          chmod 600 /tmp/AuthKey_QCAYN569MP.p8
+          MISSING=0
 
-      - name: Validate Apple ASC API Key
-        run: |
-          FILE_SIZE=$(wc -c < /tmp/AuthKey_QCAYN569MP.p8)
-          echo "APPLE_ASC_KEY_P8 size: ${FILE_SIZE} bytes"
-          FIRST_LINE=$(head -1 /tmp/AuthKey_QCAYN569MP.p8 2>/dev/null || echo "EMPTY")
-          echo "Key header line: $FIRST_LINE"
-          if [ "$FILE_SIZE" -lt 50 ]; then
+          P12_SIZE=$(printf '%s' '${{ secrets.DIST_CERT_P12_BASE64 }}' | wc -c)
+          if [ "$P12_SIZE" -lt 100 ]; then
+            echo "❌  DIST_CERT_P12_BASE64 is empty or missing."
+            MISSING=1
+          else
+            echo "✅  DIST_CERT_P12_BASE64 present (${P12_SIZE} chars)"
+          fi
+
+          PASS_SIZE=$(printf '%s' '${{ secrets.DIST_CERT_PASSWORD }}' | wc -c)
+          if [ "$PASS_SIZE" -lt 1 ]; then
+            echo "❌  DIST_CERT_PASSWORD is empty or missing."
+            MISSING=1
+          else
+            echo "✅  DIST_CERT_PASSWORD present"
+          fi
+
+          PROF_SIZE=$(printf '%s' '${{ secrets.PROVISIONING_PROFILE_BASE64 }}' | wc -c)
+          if [ "$PROF_SIZE" -lt 100 ]; then
+            echo "❌  PROVISIONING_PROFILE_BASE64 is empty or missing."
+            MISSING=1
+          else
+            echo "✅  PROVISIONING_PROFILE_BASE64 present (${PROF_SIZE} chars)"
+          fi
+
+          if [ "$MISSING" -eq 1 ]; then
             echo ""
-            echo "========================================================"
-            echo "ERROR: APPLE_ASC_KEY_P8 GitHub secret is empty or unset."
+            echo "================================================================"
+            echo "  ACTION REQUIRED — add these 3 secrets to your GitHub repo:"
+            echo "  Settings → Secrets → Actions → New repository secret"
             echo ""
-            echo "Fix: Go to your GitHub repo → Settings → Secrets →"
-            echo "  Actions → New repository secret"
-            echo "  Name:  APPLE_ASC_KEY_P8"
-            echo "  Value: paste the full contents of your AuthKey_QCAYN569MP.p8"
-            echo "         file (include the -----BEGIN PRIVATE KEY----- lines)"
-            echo "========================================================"
+            echo "  DIST_CERT_P12_BASE64"
+            echo "    On your Mac:  base64 -i StarLight.p12 | pbcopy"
+            echo "    Export from Keychain Access → My Certificates →"
+            echo "    right-click Apple Distribution: <your name> → Export"
+            echo ""
+            echo "  DIST_CERT_PASSWORD"
+            echo "    The password you chose when exporting the .p12"
+            echo ""
+            echo "  PROVISIONING_PROFILE_BASE64"
+            echo "    Download your App Store profile from:"
+            echo "    developer.apple.com → Certificates, IDs & Profiles → Profiles"
+            echo "    Filter: App Store, bundle com.starlight.enterprise"
+            echo "    Then:  base64 -i StarLight_AppStore.mobileprovision | pbcopy"
+            echo "================================================================"
             exit 1
           fi
-          echo "Key file looks valid (${FILE_SIZE} bytes)"
 
-      - name: Run EAS Build — clear stale credentials and auto-provision
+      - name: Write credentials to disk
+        run: |
+          printf '%s' '${{ secrets.DIST_CERT_P12_BASE64 }}' | base64 -d > /tmp/star.p12
+          printf '%s' '${{ secrets.PROVISIONING_PROFILE_BASE64 }}' | base64 -d > /tmp/star.mobileprovision
+          echo "Cert size:    $(wc -c < /tmp/star.p12) bytes"
+          echo "Profile size: $(wc -c < /tmp/star.mobileprovision) bytes"
+
+      - name: Write EAS credentials.json
+        working-directory: artifacts/starlight
+        run: |
+          node -e "
+          const fs = require('fs');
+          const creds = {
+            ios: {
+              distributionCertificate: {
+                path: '/tmp/star.p12',
+                password: process.env.DIST_CERT_PASSWORD
+              },
+              provisioningProfilePath: '/tmp/star.mobileprovision'
+            }
+          };
+          fs.writeFileSync('credentials.json', JSON.stringify(creds, null, 2));
+          console.log('credentials.json written');
+          "
+        env:
+          DIST_CERT_PASSWORD: ${{ secrets.DIST_CERT_PASSWORD }}
+
+      - name: Run EAS Build (local credentials)
         working-directory: artifacts/starlight
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EXPO_ASC_API_KEY_ID: QCAYN569MP
-          EXPO_ASC_API_KEY_ISSUER_ID: 37db5320-f7a1-4c2f-a01d-9d1ee4e2c409
-          EXPO_ASC_API_KEY_PATH: /tmp/AuthKey_QCAYN569MP.p8
           EAS_BUILD_NO_EXPO_GO_WARNING: "true"
         run: |
           npx eas-cli build \
             --platform ios \
             --profile production \
-            --non-interactive \
-            --clear-credentials
+            --non-interactive
 
       - name: Show build URL
         if: always()
