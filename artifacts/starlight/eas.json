@@ -6,7 +6,7 @@
   "build": {
     "production": {
       "distribution": "store",
-      "credentialsSource": "remote",
+      "credentialsSource": "local",
       "ios": {
         "resourceClass": "m-medium"
       },
