@@ -1,0 +1,56 @@
+name: EAS iOS Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: "Build message (optional)"
+        required: false
+        default: "Manual build"
+
+jobs:
+  build:
+    name: Build iOS for App Store
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        working-directory: artifacts/starlight
+        run: pnpm install
+
+      - name: Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Write Apple ASC API Key to file
+        run: |
+          echo "${{ secrets.APPLE_ASC_KEY_P8 }}" > /tmp/AuthKey_QCAYN569MP.p8
+          chmod 600 /tmp/AuthKey_QCAYN569MP.p8
+
+      - name: Run EAS Build
+        working-directory: artifacts/starlight
+        env:
+          EXPO_ASC_API_KEY_ID: QCAYN569MP
+          EXPO_ASC_API_KEY_ISSUER_ID: 37db5320-f7a1-4c2f-a01d-9d1ee4e2c409
+          EXPO_ASC_API_KEY_PATH: /tmp/AuthKey_QCAYN569MP.p8
+          EAS_BUILD_NO_EXPO_GO_WARNING: "true"
+        run: eas build --platform ios --profile production --non-interactive --json --no-wait
+
+      - name: Show build URL
+        run: |
+          echo "Build queued on Expo servers."
+          echo "View all builds: https://expo.dev/accounts/dfeliciano51/projects/starlight/builds"
