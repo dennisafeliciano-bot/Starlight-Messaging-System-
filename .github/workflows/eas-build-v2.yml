@@ -47,7 +47,7 @@ jobs:
           EXPO_ASC_API_KEY_ISSUER_ID: 37db5320-f7a1-4c2f-a01d-9d1ee4e2c409
           EXPO_ASC_API_KEY_PATH: /tmp/AuthKey_QCAYN569MP.p8
           EAS_BUILD_NO_EXPO_GO_WARNING: "true"
-        run: eas build --platform ios --profile production --non-interactive --auto-provision --json --no-wait
+        run: npx eas-cli build --platform ios --profile production --non-interactive
 
       - name: Show build URL
         run: |
